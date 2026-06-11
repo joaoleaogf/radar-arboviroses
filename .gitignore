@@ -1,0 +1,6 @@
+.env
+n8n/credentials/generated.json
+node_modules/
+dist/
+.angular/
+*.log

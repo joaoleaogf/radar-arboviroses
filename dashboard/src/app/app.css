@@ -1,0 +1,187 @@
+:host {
+  display: block;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand .logo {
+  font-size: 34px;
+}
+
+.topo h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.topo p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.toggle {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.toggle button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.15s ease;
+}
+
+.toggle button.ativo {
+  background: var(--brand);
+  color: #06121f;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card.destaque {
+  border-color: var(--n3);
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.25);
+}
+
+.card .rotulo {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.card .valor {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.card .valor.pequeno {
+  font-size: 1.3rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.painel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+
+.painel h2 {
+  font-size: 1.05rem;
+  margin-bottom: 14px;
+}
+
+.painel h2 .muni {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.mapa-painel {
+  display: flex;
+  flex-direction: column;
+}
+
+.mapa-painel app-mapa {
+  flex: 1;
+  display: block;
+}
+
+.painel h3 {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 22px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ranking li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.ranking .bolinha {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ranking .nome {
+  font-weight: 600;
+}
+
+.ranking .meta {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.rodape {
+  margin-top: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+}

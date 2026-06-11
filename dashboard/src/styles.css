@@ -1,0 +1,62 @@
+:root {
+  --bg: #0b1120;
+  --surface: #111a2e;
+  --surface-2: #18233d;
+  --border: #243150;
+  --text: #e6ecf7;
+  --muted: #93a1bd;
+  --brand: #38bdf8;
+
+  /* níveis de alerta (InfoDengue) */
+  --n1: #22c55e;
+  --n2: #eab308;
+  --n3: #f97316;
+  --n4: #ef4444;
+  --n0: #475569;
+
+  --radius: 14px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Leaflet sobre fundo escuro */
+.leaflet-container {
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface-2);
+  color: var(--text);
+}

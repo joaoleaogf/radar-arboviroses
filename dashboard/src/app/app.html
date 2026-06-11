@@ -1,0 +1,90 @@
+<header class="topo">
+  <div class="brand">
+    <span class="logo">🦟</span>
+    <div>
+      <h1>Radar de Arboviroses</h1>
+      <p>Sul de Minas · dengue &amp; chikungunya · dados do InfoDengue</p>
+    </div>
+  </div>
+
+  <div class="toggle" role="tablist">
+    <button
+      role="tab"
+      [class.ativo]="doenca() === 'dengue'"
+      (click)="trocarDoenca('dengue')"
+    >
+      Dengue
+    </button>
+    <button
+      role="tab"
+      [class.ativo]="doenca() === 'chikungunya'"
+      (click)="trocarDoenca('chikungunya')"
+    >
+      Chikungunya
+    </button>
+  </div>
+</header>
+
+@if (resumo(); as r) {
+  <section class="cards">
+    <article class="card">
+      <span class="rotulo">Municípios monitorados</span>
+      <strong class="valor">{{ r.municipios }}</strong>
+    </article>
+    <article class="card destaque">
+      <span class="rotulo">Em alerta (laranja+vermelho)</span>
+      <strong class="valor">{{ r.em_alerta }}</strong>
+    </article>
+    <article class="card">
+      <span class="rotulo">Casos est. na semana {{ semana() }}</span>
+      <strong class="valor">{{ r.casos_est_ultima_semana | number: '1.0-0' }}</strong>
+    </article>
+    <article class="card">
+      <span class="rotulo">Última carga do ETL</span>
+      <strong class="valor pequeno">{{ dataCarga() }}</strong>
+    </article>
+  </section>
+}
+
+<main class="grid">
+  <section class="painel mapa-painel">
+    <h2>Mapa de alerta</h2>
+    <app-mapa [doenca]="doenca()" (selecionar)="onSelecionar($event)" />
+  </section>
+
+  <section class="painel">
+    <h2>
+      Série histórica
+      @if (selecionado(); as m) {
+        <span class="muni">· {{ m.nome }}</span>
+      }
+    </h2>
+    <app-serie
+      [geocode]="selecionado()?.geocode ?? null"
+      [nome]="selecionado()?.nome ?? ''"
+      [doenca]="doenca()"
+    />
+
+    @if (resumo()?.top_alertas?.length) {
+      <h3>Top municípios em alerta</h3>
+      <ul class="ranking">
+        @for (t of resumo()!.top_alertas; track t.geocode) {
+          <li>
+            <i class="bolinha" [style.background]="hex[t.nivel]"></i>
+            <span class="nome">{{ t.nome }}</span>
+            <span class="meta">{{ label[t.nivel] }} · {{ t.casos_est | number: '1.0-0' }} casos</span>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</main>
+
+<footer class="rodape">
+  <p>
+    Pipeline orquestrado em <strong>n8n</strong> · dados:
+    <a href="https://info.dengue.mat.br" target="_blank" rel="noopener">InfoDengue (Fiocruz/FGV)</a>
+    e <a href="https://servicodados.ibge.gov.br" target="_blank" rel="noopener">IBGE</a> ·
+    <a href="https://github.com/joaoleaogf" target="_blank" rel="noopener">@joaoleaogf</a>
+  </p>
+</footer>

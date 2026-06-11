@@ -1,0 +1,117 @@
+{
+  "id": "radarwf1",
+  "name": "WF1 - Sync Municípios (IBGE)",
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "wf1-manual",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200],
+      "parameters": {}
+    },
+    {
+      "id": "wf1-cron",
+      "name": "Todo mês",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 6 1 * *" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wf1-http-mg",
+      "name": "Buscar municípios MG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 100],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "parameters": {
+        "url": "https://servicodados.ibge.gov.br/api/v1/localidades/estados/MG/municipios",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "wf1-code-filtro",
+      "name": "Filtrar Sul/Sudoeste",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 100],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const all = items.map((i) => i.json);\nconst sul = all.filter((m) => m.microrregiao?.mesorregiao?.nome === 'Sul/Sudoeste de Minas');\nif (sul.length === 0) {\n  throw new Error('Nenhum município da mesorregião Sul/Sudoeste de Minas encontrado na resposta do IBGE');\n}\nconst mesoId = sul[0].microrregiao.mesorregiao.id;\nreturn [{ json: { mesoId, municipios: sul.map((m) => ({ geocode: m.id, nome: m.nome })) } }];"
+      }
+    },
+    {
+      "id": "wf1-http-malha",
+      "name": "Buscar malha (GeoJSON)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 100],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "parameters": {
+        "url": "=https://servicodados.ibge.gov.br/api/v3/malhas/mesorregioes/{{ $json.mesoId }}?formato=application/vnd.geo+json&intrarregiao=municipio&qualidade=minima",
+        "options": { "timeout": 60000 }
+      }
+    },
+    {
+      "id": "wf1-code-montar",
+      "name": "Montar registros",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 100],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// A malha do IBGE vem com content-type vnd.geo+json, que o n8n não\n// auto-parseia: o corpo chega como string em json.data.\nconst raw = items[0].json;\nconst fc = raw.features ? raw : (typeof raw.data === 'string' ? JSON.parse(raw.data) : raw.data);\nconst { municipios } = $('Filtrar Sul/Sudoeste').first().json;\nconst byCode = new Map(municipios.map((m) => [String(m.geocode), m.nome]));\nreturn (fc.features || [])\n  .filter((f) => byCode.has(String(f.properties.codarea)))\n  .map((f) => ({\n    json: {\n      geocode: Number(f.properties.codarea),\n      nome: byCode.get(String(f.properties.codarea)),\n      mesorregiao: 'Sul/Sudoeste de Minas',\n      geomJson: JSON.stringify(f.geometry),\n    },\n  }));"
+      }
+    },
+    {
+      "id": "wf1-pg-upsert",
+      "name": "Upsert municípios",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1200, 100],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO municipio (geocode, nome, mesorregiao, geom, centroid)\nVALUES ($1, $2, $3,\n        ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326)),\n        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326)))\nON CONFLICT (geocode) DO UPDATE\nSET nome = EXCLUDED.nome,\n    mesorregiao = EXCLUDED.mesorregiao,\n    geom = EXCLUDED.geom,\n    centroid = EXCLUDED.centroid;",
+        "options": {
+          "queryReplacement": "={{ $json.geocode }},{{ $json.nome }},{{ $json.mesorregiao }},{{ $json.geomJson }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Todo mês": {
+      "main": [[{ "node": "Buscar municípios MG", "type": "main", "index": 0 }]]
+    },
+    "Executar manualmente": {
+      "main": [[{ "node": "Buscar municípios MG", "type": "main", "index": 0 }]]
+    },
+    "Buscar municípios MG": {
+      "main": [[{ "node": "Filtrar Sul/Sudoeste", "type": "main", "index": 0 }]]
+    },
+    "Filtrar Sul/Sudoeste": {
+      "main": [[{ "node": "Buscar malha (GeoJSON)", "type": "main", "index": 0 }]]
+    },
+    "Buscar malha (GeoJSON)": {
+      "main": [[{ "node": "Montar registros", "type": "main", "index": 0 }]]
+    },
+    "Montar registros": {
+      "main": [[{ "node": "Upsert municípios", "type": "main", "index": 0 }]]
+    }
+  }
+}

@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: radar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-radar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-radar}
+      POSTGRES_DB: ${POSTGRES_DB:-radar}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-radar} -d ${POSTGRES_DB:-radar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: n8nio/n8n:1.123.55
+    container_name: radar-n8n
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      N8N_PORT: 5678
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      TZ: America/Sao_Paulo
+      # Persistência do próprio n8n no mesmo Postgres (schema separado)
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: db
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-radar}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-radar}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-radar}
+      DB_POSTGRESDB_SCHEMA: n8n
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      # Webhooks da API do dashboard (CORS liberado para dev local)
+      N8N_CORS_ALLOW_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+      # Usado pelo WF3 (alertas) via $env
+      TELEGRAM_ALERT_CHAT_ID: ${TELEGRAM_ALERT_CHAT_ID:-}
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+      - ./n8n/credentials:/credentials:ro
+    ports:
+      - "5678:5678"
+
+volumes:
+  db-data:
+  n8n-data:

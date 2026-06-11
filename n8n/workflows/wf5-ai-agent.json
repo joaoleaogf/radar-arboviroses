@@ -1,0 +1,180 @@
+{
+  "id": "radarwf5",
+  "name": "WF5 - AI Agent (Telegram + Gemini)",
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "wf5-tg-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 100],
+      "webhookId": "aba84160-4b26-426d-afd8-fb82d38374af",
+      "credentials": {
+        "telegramApi": { "id": "radartg01", "name": "Radar Telegram Bot" }
+      },
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "wf5-agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [320, 100],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Você é o \"Radar Arboviroses Sul de Minas\", um assistente que responde sobre dengue e chikungunya nos municípios da mesorregião Sul/Sudoeste de Minas, usando dados do InfoDengue (Fiocruz/FGV).\n\nRegras:\n- Responda SEMPRE em português do Brasil, de forma concisa e clara.\n- Use APENAS os dados retornados pelas ferramentas. Nunca invente números.\n- Para encontrar um município pelo nome, use a ferramenta buscar_municipio para obter o geocode antes de consultar dados.\n- Ao citar números, mencione a semana epidemiológica e que a fonte é o InfoDengue.\n- Os níveis de alerta são: 1 verde, 2 amarelo, 3 laranja, 4 vermelho.\n- Se a pergunta for fora de escopo (não for sobre arboviroses na região), explique gentilmente o que você faz.\n- Se não houver dados para o pedido, diga isso claramente."
+        }
+      }
+    },
+    {
+      "id": "wf5-gemini",
+      "name": "Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [200, 320],
+      "credentials": {
+        "googlePalmApi": { "id": "radargm01", "name": "Radar Gemini" }
+      },
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": { "temperature": 0.2 }
+      }
+    },
+    {
+      "id": "wf5-memory",
+      "name": "Memória por chat",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [360, 320],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}",
+        "contextWindowLength": 8
+      }
+    },
+    {
+      "id": "wf5-tool-buscar",
+      "name": "buscar_municipio",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [500, 320],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Encontra o geocode (código IBGE) e o nome oficial de um município do Sul de Minas a partir de um nome aproximado. Use antes de consultar dados. Entrada: nome do município.",
+        "operation": "executeQuery",
+        "query": "SELECT geocode, nome, pop FROM municipio\nWHERE unaccent(lower(nome)) LIKE unaccent(lower('%' || $1 || '%'))\nORDER BY length(nome) LIMIT 5;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nome_municipio', 'Nome aproximado do município a buscar', 'string') }}"
+        }
+      }
+    },
+    {
+      "id": "wf5-tool-situacao",
+      "name": "situacao_municipio",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [640, 320],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Retorna a situação mais recente (última semana epidemiológica) de dengue e chikungunya para um município, dado o seu geocode. Inclui nível de alerta, casos estimados, Rt e incidência.",
+        "operation": "executeQuery",
+        "query": "SELECT doenca, se, data_inise, casos, round(casos_est) AS casos_estimados,\n       nivel, round(rt, 2) AS rt, round(p_inc100k, 1) AS incidencia_100k\nFROM situacao_atual WHERE geocode = $1::bigint ORDER BY doenca;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('geocode', 'Código IBGE (geocode) do município', 'number') }}"
+        }
+      }
+    },
+    {
+      "id": "wf5-tool-ranking",
+      "name": "ranking_alertas",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [780, 320],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Lista os municípios do Sul de Minas com maior nível de alerta para uma doença ('dengue' ou 'chikungunya'), na semana mais recente. Use para perguntas como 'quais cidades estão em alerta?' ou 'onde está pior?'.",
+        "operation": "executeQuery",
+        "query": "SELECT nome, se, nivel, round(casos_est) AS casos_estimados, round(rt, 2) AS rt\nFROM situacao_atual WHERE doenca = $1\nORDER BY nivel DESC, casos_est DESC NULLS LAST LIMIT 10;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('doenca', \"Doença: 'dengue' ou 'chikungunya'\", 'string') }}"
+        }
+      }
+    },
+    {
+      "id": "wf5-tool-resumo",
+      "name": "resumo_regional",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [920, 320],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Resumo geral da região para uma doença ('dengue' ou 'chikungunya'): total de municípios monitorados, quantos estão em alerta (nível >= 3), soma de casos estimados na última semana e a semana epidemiológica mais recente.",
+        "operation": "executeQuery",
+        "query": "SELECT (SELECT count(*) FROM municipio) AS municipios_monitorados,\n       count(*) FILTER (WHERE nivel >= 3) AS em_alerta,\n       round(sum(casos_est)) AS casos_estimados_total,\n       max(se) AS semana_epidemiologica\nFROM situacao_atual WHERE doenca = $1;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('doenca', \"Doença: 'dengue' ou 'chikungunya'\", 'string') }}"
+        }
+      }
+    },
+    {
+      "id": "wf5-tg-resposta",
+      "name": "Responder no Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [700, 100],
+      "credentials": {
+        "telegramApi": { "id": "radartg01", "name": "Radar Telegram Bot" }
+      },
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Gemini Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Memória por chat": {
+      "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "buscar_municipio": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "situacao_municipio": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "ranking_alertas": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "resumo_regional": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "AI Agent": {
+      "main": [[{ "node": "Responder no Telegram", "type": "main", "index": 0 }]]
+    }
+  }
+}

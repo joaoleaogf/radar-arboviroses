@@ -1,0 +1,175 @@
+{
+  "id": "radarwf4",
+  "name": "WF4 - API Dashboard (Webhooks)",
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "wf4-wh-munis",
+      "name": "Webhook municipios",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "fb29205e-5679-4be8-922d-c13e5f58de07",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "municipios",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      }
+    },
+    {
+      "id": "wf4-pg-munis",
+      "name": "Query municípios",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [240, 0],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_build_object(\n  'type', 'FeatureCollection',\n  'features', COALESCE(jsonb_agg(jsonb_build_object(\n    'type', 'Feature',\n    'geometry', ST_AsGeoJSON(m.geom, 4)::jsonb,\n    'properties', jsonb_build_object(\n      'geocode', m.geocode, 'nome', m.nome, 'pop', m.pop,\n      'se', s.se, 'casos', s.casos, 'casos_est', s.casos_est,\n      'nivel', s.nivel, 'rt', s.rt, 'p_inc100k', s.p_inc100k\n    )\n  )), '[]'::jsonb)\n) AS fc\nFROM municipio m\nLEFT JOIN situacao_atual s ON s.geocode = m.geocode AND s.doenca = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.query?.doenca || 'dengue' }}"
+        }
+      }
+    },
+    {
+      "id": "wf4-resp-munis",
+      "name": "Responder municípios",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [480, 0],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json.fc) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "wf4-wh-serie",
+      "name": "Webhook serie",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 220],
+      "webhookId": "0e89c94d-bf0e-45e5-9cdd-307bb1194900",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "serie",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      }
+    },
+    {
+      "id": "wf4-pg-serie",
+      "name": "Query série",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [240, 220],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_build_object(\n  'geocode', $1::bigint,\n  'doenca', $2,\n  'nome', (SELECT nome FROM municipio WHERE geocode = $1::bigint),\n  'serie', COALESCE((\n    SELECT jsonb_agg(jsonb_build_object(\n      'se', se, 'data', data_inise, 'casos', casos, 'casos_est', casos_est,\n      'nivel', nivel, 'rt', rt, 'p_inc100k', p_inc100k\n    ) ORDER BY se)\n    FROM caso_semana WHERE geocode = $1::bigint AND doenca = $2\n  ), '[]'::jsonb)\n) AS payload;",
+        "options": {
+          "queryReplacement": "={{ $json.query?.geocode || 0 }},{{ $json.query?.doenca || 'dengue' }}"
+        }
+      }
+    },
+    {
+      "id": "wf4-resp-serie",
+      "name": "Responder série",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [480, 220],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "wf4-wh-resumo",
+      "name": "Webhook resumo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 440],
+      "webhookId": "cfb9793c-d12d-4030-a399-d67b4abf62d7",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "resumo",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      }
+    },
+    {
+      "id": "wf4-pg-resumo",
+      "name": "Query resumo",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [240, 440],
+      "credentials": {
+        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_build_object(\n  'doenca', $1,\n  'municipios', (SELECT count(*) FROM municipio),\n  'em_alerta', (SELECT count(*) FROM situacao_atual WHERE doenca = $1 AND nivel >= 3),\n  'casos_est_ultima_semana', (SELECT COALESCE(sum(casos_est), 0) FROM situacao_atual WHERE doenca = $1),\n  'ultima_se', (SELECT max(se) FROM caso_semana WHERE doenca = $1),\n  'ultima_carga', (SELECT max(finished) FROM etl_run WHERE status = 'success'),\n  'top_alertas', (\n    SELECT COALESCE(jsonb_agg(t), '[]'::jsonb) FROM (\n      SELECT geocode, nome, nivel, casos_est, rt\n      FROM situacao_atual WHERE doenca = $1\n      ORDER BY nivel DESC, casos_est DESC NULLS LAST LIMIT 5\n    ) t\n  )\n) AS payload;",
+        "options": {
+          "queryReplacement": "={{ $json.query?.doenca || 'dengue' }}"
+        }
+      }
+    },
+    {
+      "id": "wf4-resp-resumo",
+      "name": "Responder resumo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [480, 440],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook municipios": {
+      "main": [[{ "node": "Query municípios", "type": "main", "index": 0 }]]
+    },
+    "Query municípios": {
+      "main": [[{ "node": "Responder municípios", "type": "main", "index": 0 }]]
+    },
+    "Webhook serie": {
+      "main": [[{ "node": "Query série", "type": "main", "index": 0 }]]
+    },
+    "Query série": {
+      "main": [[{ "node": "Responder série", "type": "main", "index": 0 }]]
+    },
+    "Webhook resumo": {
+      "main": [[{ "node": "Query resumo", "type": "main", "index": 0 }]]
+    },
+    "Query resumo": {
+      "main": [[{ "node": "Responder resumo", "type": "main", "index": 0 }]]
+    }
+  }
+}
