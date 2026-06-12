@@ -70,7 +70,7 @@ export async function geoRoutes(app: FastifyInstance) {
     const { rows } = await pool.query<{ payload: string }>(
       `SELECT jsonb_build_object(
          'geocode', $1::bigint,
-         'doenca', $2,
+         'doenca', $2::text,
          'nome', (SELECT nome FROM municipio WHERE geocode = $1::bigint),
          'serie', COALESCE((
            SELECT jsonb_agg(jsonb_build_object(
