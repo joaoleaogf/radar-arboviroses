@@ -32,11 +32,11 @@ export class AuthService {
   readonly loggedIn = computed(() => !!this.user());
 
   constructor() {
+    // Restaura token do localStorage (para o Bearer header),
+    // depois valida via /auth/me — aceita cookie httpOnly como fallback
     const saved = localStorage.getItem('radar_token');
-    if (saved) {
-      this.token.set(saved);
-      this.me().subscribe({ error: () => this.clear() });
-    }
+    if (saved) this.token.set(saved);
+    this.me().subscribe({ error: () => this.clear() });
   }
 
   register(name: string, email: string, password: string): Observable<AuthResponse> {
@@ -50,17 +50,13 @@ export class AuthService {
   }
 
   me(): Observable<User> {
-    return this.http.get<User>(`${this.base}/auth/me`)
+    return this.http.get<User>(`${this.base}/auth/me`, { withCredentials: true })
       .pipe(tap(u => this.user.set(u)));
   }
 
   updateProfile(name: string): Observable<User> {
     return this.http.put<User>(`${this.base}/auth/me`, { name })
       .pipe(tap(u => this.user.set(u)));
-  }
-
-  loginWithGoogle(): void {
-    window.location.href = `${this.base}/auth/google`;
   }
 
   handleOAuthCallback(token: string): void {
@@ -70,6 +66,7 @@ export class AuthService {
   }
 
   logout(): void {
+    this.http.post(`${this.base}/auth/logout`, {}).subscribe();
     this.clear();
     this.router.navigate(['/auth/login']);
   }

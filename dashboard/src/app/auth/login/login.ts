@@ -26,13 +26,9 @@ export class Login {
     this.auth.login(this.email, this.password).subscribe({
       next: () => this.router.navigate(['/app/dashboard']),
       error: (e) => {
-        this.erro.set(e.error?.error ?? 'Erro ao entrar. Tente novamente.');
+        this.erro.set(e.error?.error ?? 'Credenciais inválidas. Tente novamente.');
         this.loading.set(false);
       },
     });
-  }
-
-  protected loginGoogle(): void {
-    this.auth.loginWithGoogle();
   }
 }

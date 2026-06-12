@@ -33,6 +33,4 @@ export class Register {
       },
     });
   }
-
-  protected loginGoogle(): void { this.auth.loginWithGoogle(); }
 }

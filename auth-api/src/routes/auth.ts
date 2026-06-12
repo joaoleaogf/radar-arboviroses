@@ -3,9 +3,16 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { sendWelcomeEmail } from '../lib/email.js';
 
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 604800, // 7 dias em segundos
+};
+
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
-  // POST /auth/register
   fastify.post('/register', async (req: FastifyRequest, reply: FastifyReply) => {
     const { name, email, password } = req.body as { name: string; email: string; password: string };
     if (!name || !email || !password) return reply.code(400).send({ error: 'Campos obrigatórios' });
@@ -24,14 +31,12 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const user = rows[0];
     const token = fastify.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '7d' });
 
-    if (process.env.RESEND_API_KEY) {
-      sendWelcomeEmail(email, name).catch(() => {});
-    }
+    if (process.env.RESEND_API_KEY) sendWelcomeEmail(email, name).catch(() => {});
 
-    return { token, user };
+    reply.setCookie('radar_session', token, COOKIE_OPTS);
+    return reply.send({ token, user });
   });
 
-  // POST /auth/login
   fastify.post('/login', async (req: FastifyRequest, reply: FastifyReply) => {
     const { email, password } = req.body as { email: string; password: string };
     if (!email || !password) return reply.code(400).send({ error: 'Campos obrigatórios' });
@@ -49,10 +54,16 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     await pool.query('UPDATE app_user SET last_login = now() WHERE id = $1', [user.id]);
 
     const token = fastify.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '7d' });
-    return { token, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+
+    reply.setCookie('radar_session', token, COOKIE_OPTS);
+    return reply.send({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
   });
 
-  // GET /auth/me (protected)
+  fastify.post('/logout', async (_req: FastifyRequest, reply: FastifyReply) => {
+    reply.clearCookie('radar_session', { path: '/' });
+    return reply.send({ ok: true });
+  });
+
   fastify.get('/me', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest) => {
     const payload = req.user as { sub: string };
     const { rows } = await pool.query(
@@ -63,7 +74,6 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     return rows[0];
   });
 
-  // PUT /auth/me (update profile)
   fastify.put('/me', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
     const payload = req.user as { sub: string };
     const { name } = req.body as { name?: string };

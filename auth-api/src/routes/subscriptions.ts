@@ -3,11 +3,11 @@ import { pool } from '../db.js';
 
 export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
 
-  // GET /subscriptions — listar assinaturas do usuário
   fastify.get('/', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest) => {
     const { sub } = req.user as { sub: string };
     const { rows } = await pool.query(
-      `SELECT s.id, s.geocode, s.uf, s.regiao, s.doenca, s.nivel_minimo, s.canal, s.ativo,
+      `SELECT s.id, s.geocode, s.uf, s.regiao, s.doenca, s.nivel_minimo,
+              s.canal, s.frequencia, s.rt_minimo, s.ativo,
               m.nome AS municipio_nome
        FROM user_alert_subscription s
        LEFT JOIN municipio m ON m.geocode = s.geocode
@@ -18,7 +18,6 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
     return rows;
   });
 
-  // POST /subscriptions — criar assinatura
   fastify.post('/', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
     const { sub } = req.user as { sub: string };
     const body = req.body as {
@@ -28,11 +27,13 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       doenca?: string;
       nivel_minimo?: number;
       canal?: string;
+      frequencia?: string;
+      rt_minimo?: number;
     };
     const { rows } = await pool.query(
       `INSERT INTO user_alert_subscription
-         (user_id, geocode, uf, regiao, doenca, nivel_minimo, canal)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+         (user_id, geocode, uf, regiao, doenca, nivel_minimo, canal, frequencia, rt_minimo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
       [
         sub,
@@ -42,12 +43,13 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         body.doenca ?? 'dengue',
         body.nivel_minimo ?? 3,
         body.canal ?? 'email',
+        body.frequencia ?? 'imediato',
+        body.rt_minimo ?? null,
       ],
     );
     return reply.code(201).send(rows[0]);
   });
 
-  // DELETE /subscriptions/:id
   fastify.delete('/:id', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
     const { sub } = req.user as { sub: string };
     const { id } = req.params as { id: string };
@@ -59,7 +61,6 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.code(204).send();
   });
 
-  // PATCH /subscriptions/:id/toggle
   fastify.patch('/:id/toggle', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
     const { sub } = req.user as { sub: string };
     const { id } = req.params as { id: string };
