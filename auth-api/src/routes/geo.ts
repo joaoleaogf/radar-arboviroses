@@ -62,6 +62,15 @@ export async function geoRoutes(app: FastifyInstance) {
       `WITH filtro AS (
          SELECT geocode FROM municipio
          WHERE ($2::text = '*' OR uf = $2::text) AND ($3::text = '*' OR regiao = $3::text)
+       ),
+       semanal AS (
+         SELECT c.se, sum(c.casos_est) AS total
+         FROM caso_semana c JOIN filtro f ON f.geocode = c.geocode
+         WHERE c.doenca = $1::text
+         GROUP BY c.se
+       ),
+       recentes AS (
+         SELECT se, total FROM semanal ORDER BY se DESC LIMIT 12
        )
        SELECT jsonb_build_object(
          'doenca', $1::text,
@@ -70,6 +79,10 @@ export async function geoRoutes(app: FastifyInstance) {
          'casos_est_ultima_semana', (SELECT COALESCE(sum(s.casos_est), 0) FROM situacao_atual s JOIN filtro f ON f.geocode = s.geocode WHERE s.doenca = $1::text),
          'ultima_se',               (SELECT max(se) FROM caso_semana WHERE doenca = $1::text),
          'ultima_carga',            (SELECT max(finished) FROM etl_run WHERE status = 'success'),
+         'serie_recente', (
+           SELECT COALESCE(jsonb_agg(jsonb_build_object('se', se, 'casos_est', total) ORDER BY se), '[]'::jsonb)
+           FROM recentes
+         ),
          'top_alertas', (
            SELECT COALESCE(jsonb_agg(t), '[]'::jsonb) FROM (
              SELECT s.geocode, s.nome, s.nivel, s.casos_est, s.rt

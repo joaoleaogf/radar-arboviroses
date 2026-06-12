@@ -1,48 +1,39 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Doenca, FilterParams, MunicipioProps, RadarService, Resumo, TopAlerta } from '../radar.service';
 import { Mapa } from '../mapa/mapa';
 import { Serie } from '../serie/serie';
 import { NIVEL_HEX, NIVEL_LABEL } from '../nivel';
+import { REGIOES, UFS_POR_REGIAO, UF_NOME } from '../core/geo';
+import { dataDaSeFormatada, formatarSEBadge } from '../core/se';
+import { KpiCard } from '../ui/kpi-card';
+import { NivelBadge } from '../ui/nivel-badge';
+import { Skeleton, EmptyState, ErrorState } from '../ui/states';
 
 export type TipoMapa = 'alerta' | 'incidencia';
 
-const REGIOES = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'] as const;
-
-const UFS_POR_REGIAO: Record<string, string[]> = {
-  'Norte':        ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'],
-  'Nordeste':     ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
-  'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
-  'Sudeste':      ['ES', 'MG', 'RJ', 'SP'],
-  'Sul':          ['PR', 'RS', 'SC'],
-};
-
-const UF_NOME: Record<string, string> = {
-  AC:'Acre', AL:'Alagoas', AP:'Amapá', AM:'Amazonas', BA:'Bahia',
-  CE:'Ceará', DF:'Distrito Federal', ES:'Espírito Santo', GO:'Goiás',
-  MA:'Maranhão', MT:'Mato Grosso', MS:'Mato Grosso do Sul', MG:'Minas Gerais',
-  PA:'Pará', PB:'Paraíba', PR:'Paraná', PE:'Pernambuco', PI:'Piauí',
-  RJ:'Rio de Janeiro', RN:'Rio Grande do Norte', RS:'Rio Grande do Sul',
-  RO:'Rondônia', RR:'Roraima', SC:'Santa Catarina', SP:'São Paulo',
-  SE:'Sergipe', TO:'Tocantins',
-};
-
 @Component({
   selector: 'app-dashboard',
-  imports: [Mapa, Serie, DecimalPipe],
+  imports: [Mapa, Serie, DecimalPipe, RouterLink, KpiCard, NivelBadge, Skeleton, EmptyState, ErrorState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
 export class Dashboard {
   private readonly radar = inject(RadarService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly doenca    = signal<Doenca>('dengue');
   protected readonly resumo    = signal<Resumo | null>(null);
+  protected readonly carregando = signal(true);
+  protected readonly erro      = signal(false);
   protected readonly selecionado = signal<MunicipioProps | null>(null);
   protected readonly regiaoSel = signal<string | null>(null);
   protected readonly ufSel     = signal<string | null>(null);
   protected readonly tipoMapa  = signal<TipoMapa>('alerta');
+  protected readonly metricaSerie = signal<'casos' | 'incidencia'>('casos');
 
   protected readonly regioes   = REGIOES;
   protected readonly hex       = NIVEL_HEX;
@@ -51,6 +42,29 @@ export class Dashboard {
   protected readonly ufsDaRegiao = computed(() => {
     const r = this.regiaoSel();
     return r ? (UFS_POR_REGIAO[r] ?? []) : [];
+  });
+
+  /** Série de totais semanais recentes (para sparkline). */
+  protected readonly sparkCasos = computed<number[]>(() =>
+    (this.resumo()?.serie_recente ?? []).map(p => p.casos_est ?? 0),
+  );
+
+  /** Variação % de casos est. na última semana vs. a anterior. */
+  protected readonly deltaCasos = computed<number | null>(() => {
+    const s = this.resumo()?.serie_recente;
+    if (!s || s.length < 2) return null;
+    const atual = s[s.length - 1]?.casos_est ?? 0;
+    const ant   = s[s.length - 2]?.casos_est ?? 0;
+    if (ant === 0) return null;
+    return ((atual - ant) / ant) * 100;
+  });
+
+  /** Dados são considerados desatualizados se a última carga tem mais de 8 dias. */
+  protected readonly dadosDesatualizados = computed<boolean>(() => {
+    const iso = this.resumo()?.ultima_carga;
+    if (!iso) return false;
+    const dias = (Date.now() - new Date(iso).getTime()) / 86_400_000;
+    return dias > 8;
   });
 
   protected readonly filtro = computed<FilterParams>(() => ({
@@ -66,6 +80,32 @@ export class Dashboard {
   });
 
   constructor() {
+    // Hidrata o estado a partir dos query params (visões compartilháveis).
+    const q = this.route.snapshot.queryParamMap;
+    const d = q.get('doenca');
+    if (d === 'dengue' || d === 'chikungunya') this.doenca.set(d);
+    const reg = q.get('regiao');
+    if (reg && (REGIOES as readonly string[]).includes(reg)) this.regiaoSel.set(reg);
+    const uf = q.get('uf');
+    if (uf && this.regiaoSel() && (UFS_POR_REGIAO[this.regiaoSel()!] ?? []).includes(uf)) this.ufSel.set(uf);
+    const tm = q.get('mapa');
+    if (tm === 'alerta' || tm === 'incidencia') this.tipoMapa.set(tm);
+
+    // Reflete o estado atual na URL para que a visão seja compartilhável.
+    effect(() => {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {
+          doenca: this.doenca(),
+          regiao: this.regiaoSel() ?? null,
+          uf: this.ufSel() ?? null,
+          mapa: this.tipoMapa() === 'alerta' ? null : this.tipoMapa(),
+        },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    });
+
     this.carregarResumo();
   }
 
@@ -111,32 +151,29 @@ export class Dashboard {
   }
 
   protected semanaNum(): string {
-    const se = this.resumo()?.ultima_se;
-    return se ? `SE ${String(se).slice(4)} · ${String(se).slice(0, 4)}` : '—';
+    return formatarSEBadge(this.resumo()?.ultima_se);
   }
 
   protected semana(): string {
-    const se = this.resumo()?.ultima_se;
-    if (!se) return '—';
-    const d = this.seParaData(se);
-    if (!d) return '—';
-    const m = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    return `${d.getUTCDate()} ${m[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    return dataDaSeFormatada(this.resumo()?.ultima_se);
   }
 
-  private seParaData(se: number): Date | null {
-    if (!se) return null;
-    const ano  = Math.floor(se / 100);
-    const sem  = se % 100;
-    const jan4 = new Date(Date.UTC(ano, 0, 4));
-    const inicioSem1 = new Date(jan4);
-    inicioSem1.setUTCDate(jan4.getUTCDate() - jan4.getUTCDay());
-    const inicio = new Date(inicioSem1);
-    inicio.setUTCDate(inicioSem1.getUTCDate() + (sem - 1) * 7);
-    return inicio;
+  protected recarregar(): void {
+    this.carregarResumo();
   }
 
   private carregarResumo(): void {
-    this.radar.resumo(this.doenca(), this.filtro()).subscribe((r: Resumo) => this.resumo.set(r));
+    this.carregando.set(true);
+    this.erro.set(false);
+    this.radar.resumo(this.doenca(), this.filtro()).subscribe({
+      next: (r: Resumo) => {
+        this.resumo.set(r);
+        this.carregando.set(false);
+      },
+      error: () => {
+        this.erro.set(true);
+        this.carregando.set(false);
+      },
+    });
   }
 }

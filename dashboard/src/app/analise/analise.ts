@@ -3,6 +3,8 @@ import { DecimalPipe, PercentPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { NIVEL_HEX, NIVEL_LABEL } from '../nivel';
+import { REGIOES } from '../core/geo';
+import { formatarSE } from '../core/se';
 
 interface Resumo {
   doenca: string; municipios: number; em_alerta: number;
@@ -21,8 +23,6 @@ interface RegiaoStats {
   pct_chik: number;
   casos_chik: number;
 }
-
-const REGIOES = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
 
 @Component({
   selector: 'app-analise',
@@ -44,11 +44,7 @@ export class Analise implements OnInit {
   protected readonly hex   = NIVEL_HEX;
   protected readonly label = NIVEL_LABEL;
 
-  protected readonly seLabel = computed(() => {
-    const se = this.dengue()?.ultima_se;
-    if (!se) return '—';
-    return `SE ${String(se).slice(4)}/${String(se).slice(0, 4)}`;
-  });
+  protected readonly seLabel = computed(() => formatarSE(this.dengue()?.ultima_se));
 
   protected readonly comparacao = computed(() => {
     const d = this.dengue();

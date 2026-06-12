@@ -22,6 +22,7 @@ export const routes: Routes = [
       { path: 'analise',    loadComponent: () => import('./analise/analise').then(m => m.Analise) },
       { path: 'relatorios', loadComponent: () => import('./relatorios/relatorios').then(m => m.Relatorios) },
       { path: 'alertas',    loadComponent: () => import('./alertas/alertas').then(m => m.Alertas) },
+      { path: 'metodologia', loadComponent: () => import('./metodologia/metodologia').then(m => m.Metodologia) },
       { path: 'perfil',     canActivate: [authGuard], loadComponent: () => import('./perfil/perfil').then(m => m.Perfil) },
       { path: 'admin',      canActivate: [authGuard, adminGuard], loadComponent: () => import('./admin/admin').then(m => m.Admin) },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

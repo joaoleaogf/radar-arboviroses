@@ -24,6 +24,35 @@ export const NIVEL_LABEL: Record<number, string> = {
   4: 'Vermelho',
 };
 
+/** Descrição acionável de cada nível (metodologia InfoDengue). */
+export const NIVEL_DESCRICAO: Record<number, string> = {
+  0: 'Sem dados disponíveis para o período.',
+  1: 'Transmissão baixa. Situação de controle.',
+  2: 'Atenção: condições favoráveis à transmissão (clima e/ou incidência).',
+  3: 'Alerta: transmissão sustentada (Rt acima de 1 por semanas consecutivas).',
+  4: 'Risco de epidemia: incidência alta e transmissão acelerada.',
+};
+
 export function corDoNivel(nivel: number | null | undefined): string {
   return NIVEL_HEX[nivel ?? 0] ?? NIVEL_HEX[0];
 }
+
+export type TendenciaRt = 'crescimento' | 'estavel' | 'queda' | 'indefinido';
+
+/**
+ * Interpreta o número reprodutivo efetivo (Rt) em tendência de transmissão.
+ * Rt > 1 ⇒ casos crescendo; Rt ≈ 1 ⇒ estável; Rt < 1 ⇒ casos diminuindo.
+ */
+export function interpretarRt(rt: number | null | undefined): TendenciaRt {
+  if (rt == null) return 'indefinido';
+  if (rt > 1.1) return 'crescimento';
+  if (rt < 0.9) return 'queda';
+  return 'estavel';
+}
+
+export const RT_LABEL: Record<TendenciaRt, string> = {
+  crescimento: 'Transmissão em crescimento',
+  estavel: 'Transmissão estável',
+  queda: 'Transmissão em queda',
+  indefinido: 'Transmissão indefinida',
+};
