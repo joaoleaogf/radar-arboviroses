@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { pool } from '../db.js';
+import { getAlertJobs } from '../lib/alerts.js';
 
 function requireAdmin(req: FastifyRequest, reply: FastifyReply, done: () => void) {
   const payload = req.user as { role: string };
@@ -9,6 +10,20 @@ function requireAdmin(req: FastifyRequest, reply: FastifyReply, done: () => void
   }
   done();
 }
+
+const roleSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: { id: { type: 'string', format: 'uuid' } },
+  },
+  body: {
+    type: 'object',
+    required: ['role'],
+    additionalProperties: false,
+    properties: { role: { type: 'string', enum: ['user', 'admin'] } },
+  },
+};
 
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   const guards = [fastify.authenticate, requireAdmin];
@@ -25,17 +40,20 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PATCH /admin/users/:id/role
-  fastify.patch('/users/:id/role', { preHandler: guards }, async (req: FastifyRequest, reply: FastifyReply) => {
-    const { id } = req.params as { id: string };
-    const { role } = req.body as { role: string };
-    if (!['user', 'admin'].includes(role)) return reply.code(400).send({ error: 'Role inválida' });
-    const { rows } = await pool.query(
-      'UPDATE app_user SET role = $1 WHERE id = $2 RETURNING id, email, name, role',
-      [role, id],
-    );
-    if (!rows.length) return reply.code(404).send({ error: 'Usuário não encontrado' });
-    return rows[0];
-  });
+  fastify.patch<{ Params: { id: string }; Body: { role: 'user' | 'admin' } }>(
+    '/users/:id/role',
+    { preHandler: guards, schema: roleSchema },
+    async (req, reply) => {
+      const { id } = req.params;
+      const { role } = req.body;
+      const { rows } = await pool.query(
+        'UPDATE app_user SET role = $1 WHERE id = $2 RETURNING id, email, name, role',
+        [role, id],
+      );
+      if (!rows.length) return reply.code(404).send({ error: 'Usuário não encontrado' });
+      return rows[0];
+    },
+  );
 
   // GET /admin/etl — histórico de execuções do ETL
   fastify.get('/etl', { preHandler: guards }, async () => {
@@ -64,24 +82,9 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     };
   });
 
-  // POST /admin/notify-test — dispara notificações manualmente
-  fastify.post('/notify-test', { preHandler: guards }, async (_req, reply: FastifyReply) => {
-    // Busca municípios em alerta nível >= 3 com assinaturas ativas
-    const { rows: jobs } = await pool.query(`
-      SELECT DISTINCT ON (s.id)
-             s.id AS sub_id, s.user_id, s.doenca, s.nivel_minimo,
-             u.email, u.name,
-             sa.geocode, sa.nome, sa.uf, sa.nivel, sa.casos_est, sa.se
-      FROM user_alert_subscription s
-      JOIN app_user u ON u.id = s.user_id
-      JOIN situacao_atual sa
-        ON sa.doenca = s.doenca
-        AND sa.nivel >= s.nivel_minimo
-        AND (s.geocode IS NULL OR s.geocode = sa.geocode)
-        AND (s.uf IS NULL OR s.uf = sa.uf)
-        AND (s.regiao IS NULL OR s.regiao = sa.regiao)
-      WHERE s.ativo = true AND s.canal = 'email'
-    `);
+  // POST /admin/notify-test — prévia das notificações que seriam disparadas
+  fastify.post('/notify-test', { preHandler: guards }, async (_req, reply) => {
+    const jobs = await getAlertJobs();
     return reply.send({ jobs: jobs.length, preview: jobs.slice(0, 3) });
   });
 };

@@ -113,6 +113,41 @@ radar-arboviroses/
 
 `n8n` · `PostgreSQL/PostGIS` · `Angular 21` · `Leaflet` · `Highcharts` · `Google Gemini (AI Agent)` · `Telegram Bot` · `Docker Compose` · `TypeScript`
 
+## Operações
+
+### Testes e CI
+
+```bash
+cd auth-api
+npm ci
+npm run typecheck   # tsc --noEmit (src + test)
+npm test            # vitest (rotas com pool mockado)
+npm run build       # compila para dist/
+```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda typecheck, testes, build e `npm audit` do auth-api (Node 20) e o build do dashboard (Node 22) em todo push para `main` e pull request.
+
+### Rotação de segredos (JWT_SECRET / INTERNAL_SECRET)
+
+O `docker compose up` falha se `JWT_SECRET` ou `INTERNAL_SECRET` estiverem ausentes do `.env` — é proposital (fail-fast, sem defaults previsíveis). Para gerar/rotacionar:
+
+```bash
+openssl rand -hex 32   # gere um valor para cada segredo
+```
+
+1. Edite o `.env` (`/opt/radar-arboviroses/.env` na VM) com os novos valores.
+2. Se rotacionar o `INTERNAL_SECRET`, atualize **na mesma janela** o header `x-internal-secret` usado pelo n8n (WF5) na chamada a `/notify/dispatch`.
+3. `docker compose up -d auth-api`.
+4. Rotação do `JWT_SECRET` invalida as sessões ativas — os usuários precisam logar de novo.
+
+### Migrations em banco existente
+
+Os scripts `db/init/0N-*.sql` só rodam automaticamente em instalação nova (volume vazio). Em banco já provisionado, aplique manualmente — todos são idempotentes (`IF NOT EXISTS`):
+
+```bash
+docker exec -i radar-db psql -U radar -d radar < db/init/05-indexes.sql
+```
+
 ## Roadmap
 
 - [ ] Deploy em VPS (n8n + Postgres atrás de HTTPS) e dashboard na Vercel

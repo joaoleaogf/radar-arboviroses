@@ -1,10 +1,34 @@
 import type { FastifyInstance } from 'fastify';
 import { pool } from '../db.js';
 
+interface GeoQuery   { doenca: string; uf: string; regiao: string }
+interface SerieQuery { doenca: string; geocode: string }
+
+// regiao não usa enum: os valores vêm do IBGE via WF1
+const geoQuerySchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    doenca: { type: 'string', enum: ['dengue', 'chikungunya'], default: 'dengue' },
+    uf:     { type: 'string', pattern: '^([A-Z]{2}|\\*)$', default: '*' },
+    regiao: { type: 'string', maxLength: 40, default: '*' },
+  },
+};
+
+const serieQuerySchema = {
+  type: 'object',
+  required: ['geocode'],
+  additionalProperties: false,
+  properties: {
+    geocode: { type: 'string', pattern: '^[0-9]{7}$' },
+    doenca:  { type: 'string', enum: ['dengue', 'chikungunya'], default: 'dengue' },
+  },
+};
+
 export async function geoRoutes(app: FastifyInstance) {
   // GeoJSON dos municípios com última situação epidemiológica
-  app.get('/municipios', async (req: any, reply) => {
-    const { doenca = 'dengue', uf = '*', regiao = '*' } = req.query as Record<string, string>;
+  app.get<{ Querystring: GeoQuery }>('/municipios', { schema: { querystring: geoQuerySchema } }, async (req, reply) => {
+    const { doenca, uf, regiao } = req.query;
 
     const { rows } = await pool.query<{ fc: string }>(
       `SELECT jsonb_build_object(
@@ -31,8 +55,8 @@ export async function geoRoutes(app: FastifyInstance) {
   });
 
   // Resumo nacional / filtrado
-  app.get('/resumo', async (req: any, reply) => {
-    const { doenca = 'dengue', uf = '*', regiao = '*' } = req.query as Record<string, string>;
+  app.get<{ Querystring: GeoQuery }>('/resumo', { schema: { querystring: geoQuerySchema } }, async (req, reply) => {
+    const { doenca, uf, regiao } = req.query;
 
     const { rows } = await pool.query<{ payload: string }>(
       `WITH filtro AS (
@@ -63,9 +87,8 @@ export async function geoRoutes(app: FastifyInstance) {
   });
 
   // Série histórica de um município
-  app.get('/serie', async (req: any, reply) => {
-    const { doenca = 'dengue', geocode } = req.query as Record<string, string>;
-    if (!geocode) return reply.code(400).send({ error: 'geocode obrigatório' });
+  app.get<{ Querystring: SerieQuery }>('/serie', { schema: { querystring: serieQuerySchema } }, async (req, reply) => {
+    const { doenca, geocode } = req.query;
 
     const { rows } = await pool.query<{ payload: string }>(
       `SELECT jsonb_build_object(

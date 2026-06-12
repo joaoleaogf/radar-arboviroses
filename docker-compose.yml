@@ -62,7 +62,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-radar}:${POSTGRES_PASSWORD:-radar}@db:5432/${POSTGRES_DB:-radar}
-      JWT_SECRET: ${JWT_SECRET:-changeme-jwt-secret-min32chars-here}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (openssl rand -hex 32)}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
@@ -70,7 +70,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       API_BASE_URL: ${API_BASE_URL:-http://localhost:3001}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:4200}
-      INTERNAL_SECRET: ${INTERNAL_SECRET:-radar-internal-2024}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?defina INTERNAL_SECRET no .env (openssl rand -hex 32)}
       DASHBOARD_URL: ${FRONTEND_URL:-http://localhost:4200}
       NODE_ENV: production
     ports:
