@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { Doenca, FilterParams, MunicipioProps, RadarService, Resumo, TopAlerta } from './radar.service';
-import { Mapa } from './mapa/mapa';
-import { Serie } from './serie/serie';
-import { NIVEL_HEX, NIVEL_LABEL } from './nivel';
+import { Doenca, FilterParams, MunicipioProps, RadarService, Resumo, TopAlerta } from '../radar.service';
+import { Mapa } from '../mapa/mapa';
+import { Serie } from '../serie/serie';
+import { NIVEL_HEX, NIVEL_LABEL } from '../nivel';
 
 export type TipoMapa = 'alerta' | 'incidencia';
 
@@ -137,6 +137,6 @@ export class Dashboard {
   }
 
   private carregarResumo(): void {
-    this.radar.resumo(this.doenca(), this.filtro()).subscribe((r) => this.resumo.set(r));
+    this.radar.resumo(this.doenca(), this.filtro()).subscribe((r: Resumo) => this.resumo.set(r));
   }
 }

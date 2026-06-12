@@ -13,7 +13,7 @@ import {
 import * as L from 'leaflet';
 import { Doenca, FilterParams, MunicipiosGeoJson, MunicipioProps, RadarService } from '../radar.service';
 import { corDoNivel, NIVEL_HEX, NIVEL_LABEL } from '../nivel';
-import { TipoMapa } from '../app';
+import { TipoMapa } from '../dashboard/dashboard';
 
 const INC_BREAKS: [number, string][] = [
   [  10, '#1d4ed8'],
