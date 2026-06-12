@@ -1,0 +1,506 @@
+:host {
+  display: block;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 24px 56px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--brand-dim);
+  border: 1px solid var(--brand-glow);
+  border-radius: 12px;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.brand-text h1 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.brand-accent {
+  color: var(--brand);
+}
+
+.brand-text p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.semana-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.toggle {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 2px;
+}
+
+.toggle button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.18s ease;
+  letter-spacing: 0.01em;
+}
+
+.toggle button.ativo {
+  background: var(--brand);
+  color: #03090f;
+  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.3);
+}
+
+/* ── Filter bar ──────────────────────────────────────────── */
+
+.filtros {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.filtro-esq {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.filtro-dir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.filtro-sep {
+  color: var(--muted-2);
+  font-size: 0.9rem;
+  font-weight: 400;
+  user-select: none;
+}
+
+.filtro-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--surface-2);
+  border-color: var(--muted-2);
+  color: var(--text);
+}
+
+.chip.ativo {
+  background: var(--brand-dim);
+  border-color: var(--brand-glow);
+  color: var(--brand);
+}
+
+.chip-ativo-reg {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: var(--brand-glow);
+  color: var(--brand);
+}
+
+.chip-ativo-reg:hover {
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--brand);
+}
+
+.toggle-mapa {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.toggle-mapa button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.toggle-mapa button.ativo {
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Map type badge in panel header */
+.mapa-tipo-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted-2);
+  letter-spacing: 0.02em;
+  margin-left: 6px;
+}
+
+/* ── KPI Cards ───────────────────────────────────────────── */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-dim), transparent);
+}
+
+.card:hover {
+  border-color: var(--muted-2);
+}
+
+.card-alerta {
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.card-alerta::after {
+  background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.25), transparent);
+}
+
+.card-alerta.zero {
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.card-alerta.zero::after {
+  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.2), transparent);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rotulo {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.chip-abrev {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted-2);
+  margin-top: 2px;
+}
+
+.card-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+
+.ico-map  { background: var(--brand-dim);               color: var(--brand); }
+.ico-alert{ background: rgba(249, 115, 22, 0.1);         color: var(--n3); }
+.ico-chart{ background: rgba(34, 197, 94, 0.1);          color: var(--n1); }
+.ico-cal  { background: rgba(139, 92, 246, 0.1);         color: #a78bfa; }
+
+.card .valor {
+  font-size: 2.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.card .valor.pequeno {
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+
+/* ── Main grid ───────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ── Panels ──────────────────────────────────────────────── */
+
+.painel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.painel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 10px;
+}
+
+.painel-header h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.painel-header h2 .muni {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.mapa-painel {
+  min-height: 540px;
+}
+
+.mapa-painel app-mapa {
+  flex: 1;
+  display: block;
+}
+
+.direita {
+  padding: 0;
+}
+
+.direita app-serie {
+  padding: 0 20px;
+  display: block;
+}
+
+/* Disease badge */
+.doenca-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.dengue-b {
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--brand);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.chik-b {
+  background: rgba(139, 92, 246, 0.12);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+/* ── Ranking ─────────────────────────────────────────────── */
+
+.ranking-header {
+  padding: 14px 20px 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ranking-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.ranking-item:hover {
+  background: var(--surface-2);
+}
+
+.nivel-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  min-width: 62px;
+  text-align: center;
+}
+
+.ranking-item .nome {
+  font-weight: 600;
+  flex: 1;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.casos-val {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.casos-label {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+
+.rodape {
+  margin-top: 28px;
+  text-align: center;
+  color: var(--muted-2);
+  font-size: 0.78rem;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.rodape strong {
+  color: var(--muted);
+}
+
+.rodape a {
+  color: var(--muted);
+}
+
+.rodape a:hover {
+  color: var(--brand);
+}

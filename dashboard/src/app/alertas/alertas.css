@@ -1,0 +1,73 @@
+.page { padding: 32px; max-width: 1100px; }
+
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px; margin-bottom: 28px;
+}
+.page-header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 4px; }
+.page-header p  { color: var(--muted); font-size: 0.875rem; margin: 0; }
+
+.toggle {
+  display: inline-flex; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 999px; padding: 4px; gap: 2px;
+}
+.toggle button {
+  border: none; background: transparent; color: var(--muted);
+  padding: 7px 18px; border-radius: 999px; font-weight: 600;
+  font-size: 0.875rem; cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.toggle button.ativo { background: var(--brand); color: #03090f; }
+
+.loading, .empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 64px 0;
+  color: var(--muted); font-size: 0.875rem; text-align: center;
+}
+
+.count-row {
+  color: var(--muted); font-size: 0.875rem; margin-bottom: 14px;
+}
+.count-row strong { color: var(--text); font-size: 1.1rem; margin-right: 4px; }
+
+.alert-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.table-head, .table-row {
+  display: grid;
+  grid-template-columns: 2fr 120px 100px 110px 80px 110px;
+  gap: 8px;
+  padding: 12px 20px;
+  align-items: center;
+}
+
+.table-head {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem; font-weight: 700;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.table-row {
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.875rem; transition: background 0.1s;
+}
+.table-row:last-child { border-bottom: none; }
+.table-row:hover { background: var(--surface-2); }
+
+.muni-cell { display: flex; flex-direction: column; gap: 2px; }
+.muni-cell strong { font-weight: 600; }
+.muni-cell small  { font-size: 0.72rem; color: var(--muted); }
+
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rt-alto { color: var(--n3); font-weight: 700; }
+
+.nivel-badge {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em;
+  padding: 3px 9px; border-radius: 999px;
+}
+
+.se-cell { color: var(--muted); font-size: 0.78rem; }

@@ -1,0 +1,53 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Alertas ativos</h1>
+      <p>Municípios com nível de alerta laranja ou vermelho</p>
+    </div>
+    <div class="toggle" role="tablist">
+      <button role="tab" [class.ativo]="doencaSel()==='dengue'"     (click)="trocar('dengue')">Dengue</button>
+      <button role="tab" [class.ativo]="doencaSel()==='chikungunya'" (click)="trocar('chikungunya')">Chikungunya</button>
+    </div>
+  </header>
+
+  @if (carregando()) {
+    <div class="loading">Carregando alertas…</div>
+  } @else if (!alertas().length) {
+    <div class="empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <p>Nenhum município em alerta laranja ou vermelho.</p>
+    </div>
+  } @else {
+    <div class="count-row">
+      <strong>{{ alertas().length }}</strong> municípios em alerta
+    </div>
+
+    <div class="alert-table">
+      <div class="table-head">
+        <span>Município</span>
+        <span>Nível</span>
+        <span class="num">Casos est.</span>
+        <span class="num">Inc./100k</span>
+        <span class="num">Rt</span>
+        <span>SE</span>
+      </div>
+      @for (a of alertas(); track a.geocode) {
+        <div class="table-row">
+          <span class="muni-cell">
+            <strong>{{ a.nome }}</strong>
+            <small>{{ a.uf }} · {{ a.regiao }}</small>
+          </span>
+          <span>
+            <span class="nivel-badge" [style.color]="hex[a.nivel]" [style.background]="hex[a.nivel]+'1a'">
+              {{ label[a.nivel] }}
+            </span>
+          </span>
+          <span class="num">{{ a.casos_est | number:'1.0-0' }}</span>
+          <span class="num">{{ a.p_inc100k | number:'1.1-1' }}</span>
+          <span class="num" [class.rt-alto]="a.rt > 1">{{ a.rt | number:'1.2-2' }}</span>
+          <span class="se-cell">SE {{ (a.se+'').slice(4) }}/{{ (a.se+'').slice(0,4) }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

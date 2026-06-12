@@ -1,0 +1,172 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Relatórios</h1>
+      <p>Dados municipais por semana epidemiológica · clique no cabeçalho para ordenar</p>
+    </div>
+    <div class="header-actions">
+      <div class="toggle" role="tablist">
+        <button [class.ativo]="doenca()==='dengue'"      (click)="trocar('dengue')">
+          <span class="dot dengue-dot"></span>Dengue
+        </button>
+        <button [class.ativo]="doenca()==='chikungunya'" (click)="trocar('chikungunya')">
+          <span class="dot chik-dot"></span>Chikungunya
+        </button>
+      </div>
+      <button class="btn-export" (click)="exportCsv()" title="Exportar CSV">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar CSV
+      </button>
+    </div>
+  </header>
+
+  <!-- Filtros -->
+  <div class="filtros-row">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="search" [value]="busca()" (input)="busca.set($any($event.target).value)"
+             placeholder="Buscar município ou UF…" />
+    </div>
+
+    <select [value]="nivelFiltro()" (change)="nivelFiltro.set(+$any($event.target).value)">
+      <option value="0">Todos os níveis</option>
+      <option value="1">Nível 1 — Verde</option>
+      <option value="2">Nível 2 — Amarelo</option>
+      <option value="3">Nível 3 — Laranja</option>
+      <option value="4">Nível 4 — Vermelho</option>
+    </select>
+
+    <select [value]="regiaoFiltro()" (change)="setRegiaoFiltro($any($event.target).value)">
+      <option value="">Todas as regiões</option>
+      @for (r of regioes; track r) { <option [value]="r">{{ r }}</option> }
+    </select>
+
+    @if (ufsDaRegiao().length) {
+      <select [value]="ufFiltro()" (change)="ufFiltro.set($any($event.target).value)">
+        <option value="">Toda a região</option>
+        @for (uf of ufsDaRegiao(); track uf) { <option [value]="uf">{{ uf }}</option> }
+      </select>
+    }
+
+    @if (busca() || nivelFiltro() || regiaoFiltro()) {
+      <button class="btn-clear" (click)="busca.set(''); nivelFiltro.set(0); regiaoFiltro.set(''); ufFiltro.set('')" title="Limpar filtros">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Limpar
+      </button>
+    }
+  </div>
+
+  <!-- Stats bar -->
+  @if (!carregando()) {
+    <div class="stats-bar">
+      <div class="stat-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <strong>{{ stats().total | number }}</strong> municípios
+      </div>
+      <div class="stat-pill alerta">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <strong>{{ stats().emAlerta | number }}</strong> em alerta
+      </div>
+      <div class="stat-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <strong>{{ stats().totalCasos | number:'1.0-0' }}</strong> casos est.
+      </div>
+      <div class="stat-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <strong>{{ stats().avgInc | number:'1.1-1' }}</strong> inc./100k média
+      </div>
+    </div>
+  }
+
+  @if (carregando()) {
+    <div class="loading">
+      <div class="loading-ring"></div>
+      Carregando {{ doenca() === 'dengue' ? 'Dengue' : 'Chikungunya' }}…
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" (click)="setSort('nome')">
+              Município
+              <ng-container [ngTemplateOutlet]="sortIconTpl" [ngTemplateOutletContext]="{k:'nome'}"/>
+            </th>
+            <th class="sortable" (click)="setSort('uf')">
+              UF
+              <ng-container [ngTemplateOutlet]="sortIconTpl" [ngTemplateOutletContext]="{k:'uf'}"/>
+            </th>
+            <th class="sortable" (click)="setSort('regiao')">
+              Região
+              <ng-container [ngTemplateOutlet]="sortIconTpl" [ngTemplateOutletContext]="{k:'regiao'}"/>
+            </th>
+            <th class="sortable" (click)="setSort('nivel')">
+              Nível
+              <ng-container [ngTemplateOutlet]="sortIconTpl" [ngTemplateOutletContext]="{k:'nivel'}"/>
+            </th>
+            <th class="sortable num" (click)="setSort('casos_est')">
+              Casos est.
+              <ng-container [ngTemplateOutlet]="sortIconTpl" [ngTemplateOutletContext]="{k:'casos_est'}"/>
+            </th>
+            <th class="sortable num" (click)="setSort('p_inc100k')">
+              Inc./100k
+              <ng-container [ngTemplateOutlet]="sortIconTpl" [ngTemplateOutletContext]="{k:'p_inc100k'}"/>
+            </th>
+            <th class="sortable num" (click)="setSort('rt')">
+              Rt
+              <ng-container [ngTemplateOutlet]="sortIconTpl" [ngTemplateOutletContext]="{k:'rt'}"/>
+            </th>
+            <th>SE</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of filtradas(); track r.geocode) {
+            <tr>
+              <td><strong>{{ r.nome }}</strong></td>
+              <td class="uf-cell">{{ r.uf }}</td>
+              <td class="muted-cell">{{ r.regiao }}</td>
+              <td>
+                @if (r.nivel) {
+                  <span class="nivel-badge"
+                        [style.color]="hex[r.nivel]"
+                        [style.background]="hex[r.nivel] + '18'">
+                    {{ label[r.nivel] }}
+                  </span>
+                } @else {
+                  <span class="sem-dados">—</span>
+                }
+              </td>
+              <td class="num">{{ r.casos_est != null ? (r.casos_est | number:'1.0-0') : '—' }}</td>
+              <td class="num">{{ r.p_inc100k != null ? (r.p_inc100k | number:'1.1-1') : '—' }}</td>
+              <td class="num" [class.rt-alto]="r.rt != null && r.rt > 1">
+                {{ r.rt != null ? (r.rt | number:'1.2-2') : '—' }}
+              </td>
+              <td class="se-cell">
+                {{ r.se ? 'SE ' + (r.se+'').slice(4) + '/' + (r.se+'').slice(0,4) : '—' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      @if (filtradas().length === 0) {
+        <div class="empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <p>Nenhum município encontrado com os filtros aplicados.</p>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<ng-template #sortIconTpl let-k="k">
+  <svg class="sort-icon" [class.ativo]="sortKey()===k" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    @if (sortKey()===k && sortAsc()) {
+      <polyline points="18 15 12 9 6 15"/>
+    } @else if (sortKey()===k && !sortAsc()) {
+      <polyline points="6 9 12 15 18 9"/>
+    } @else {
+      <line x1="12" y1="5" x2="12" y2="19"/><polyline points="7 10 12 5 17 10"/><polyline points="7 14 12 19 17 14"/>
+    }
+  </svg>
+</ng-template>

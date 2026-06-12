@@ -1,0 +1,235 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Perfil</h1>
+    <p>Dados pessoais e preferências de alerta</p>
+  </header>
+
+  <div class="page-grid">
+
+    <!-- ── Dados pessoais ──────────────────────────────── -->
+    <section class="card">
+      <h2>Dados pessoais</h2>
+
+      @if (auth.user(); as u) {
+        <div class="user-card">
+          @if (u.avatar_url) {
+            <img [src]="u.avatar_url" class="big-avatar" alt="Avatar" />
+          } @else {
+            <div class="big-initials">{{ u.name.charAt(0).toUpperCase() }}</div>
+          }
+          <div class="user-meta">
+            <strong>{{ u.name }}</strong>
+            <small>{{ u.email }}</small>
+            <span class="role-badge" [class.admin]="u.role === 'admin'">{{ u.role }}</span>
+          </div>
+        </div>
+      }
+
+      <div class="field">
+        <label>Nome de exibição</label>
+        <input type="text" [value]="editName()" (input)="editName.set($any($event.target).value)" placeholder="Seu nome" />
+      </div>
+
+      <div class="field">
+        <label>
+          Celular
+          <span class="field-hint">(DDD + número — para futuras notificações)</span>
+        </label>
+        <div class="input-phone-wrap">
+          <svg class="input-phone-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.9a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <input type="tel" [value]="editPhone()" (input)="editPhone.set($any($event.target).value)"
+                 placeholder="(11) 99999-9999" autocomplete="tel" />
+        </div>
+      </div>
+
+      <!-- Canais de notificação -->
+      <div class="canais-section">
+        <label>Canais de notificação</label>
+        <div class="canais-list">
+          <div class="canal-item ativo">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <div class="canal-info">
+              <span class="canal-nome">E-mail</span>
+              <small>{{ auth.user()?.email }}</small>
+            </div>
+            <span class="canal-badge ativo">Ativo</span>
+          </div>
+
+          <div class="canal-item em-breve">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <div class="canal-info">
+              <span class="canal-nome">SMS</span>
+              <small>{{ editPhone() || 'Adicione seu celular acima' }}</small>
+            </div>
+            <span class="canal-badge soon">Em breve</span>
+          </div>
+
+          <div class="canal-item em-breve">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <div class="canal-info">
+              <span class="canal-nome">WhatsApp</span>
+              <small>{{ editPhone() || 'Adicione seu celular acima' }}</small>
+            </div>
+            <span class="canal-badge soon">Em breve</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" (click)="salvarPerfil()" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner"></span> Salvando…
+        } @else if (savedOk()) {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvo!
+        } @else {
+          Salvar alterações
+        }
+      </button>
+    </section>
+
+    <!-- ── Assinaturas ─────────────────────────────────── -->
+    <section class="card card-wide">
+      <div class="card-head">
+        <h2>Assinaturas de alerta</h2>
+        <span class="badge-count">{{ subs().length }}</span>
+      </div>
+      <p class="card-sub">
+        Receba e-mails automáticos quando municípios atingirem o nível configurado.
+        SMS e WhatsApp serão suportados em breve.
+      </p>
+
+      <!-- Nova assinatura -->
+      <div class="nova-sub">
+        <h3>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova assinatura
+        </h3>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Doença</label>
+            <select [(ngModel)]="newDoenca">
+              <option value="dengue">Dengue</option>
+              <option value="chikungunya">Chikungunya</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Nível mínimo</label>
+            <select [(ngModel)]="newNivel">
+              @for (n of [2,3,4]; track n) {
+                <option [value]="n">{{ nivelLabel[n] }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label>Frequência</label>
+            <select [(ngModel)]="newFreq">
+              <option value="imediato">Imediato</option>
+              <option value="diario">Resumo diário</option>
+              <option value="semanal">Resumo semanal</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="escopo-section">
+          <label class="escopo-label">Escopo geográfico</label>
+          <div class="form-row">
+            <div class="field">
+              <label>Região</label>
+              <select [(ngModel)]="newRegiao" (ngModelChange)="newUf=''; newGeocode=''">
+                <option value="">Todo o Brasil</option>
+                @for (r of regioes; track r) { <option [value]="r">{{ r }}</option> }
+              </select>
+            </div>
+            @if (ufsDaRegiao.length) {
+              <div class="field">
+                <label>UF (opcional)</label>
+                <select [(ngModel)]="newUf" (ngModelChange)="newGeocode=''">
+                  <option value="">Toda a região</option>
+                  @for (uf of ufsDaRegiao; track uf) { <option [value]="uf">{{ uf }}</option> }
+                </select>
+              </div>
+            }
+          </div>
+        </div>
+
+        <button class="btn-advanced-toggle" type="button" (click)="showAdvanced.set(!showAdvanced())">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            @if (showAdvanced()) { <polyline points="18 15 12 9 6 15"/> }
+            @else                { <polyline points="6 9 12 15 18 9"/> }
+          </svg>
+          Opções avançadas (código IBGE, Rt)
+        </button>
+
+        @if (showAdvanced()) {
+          <div class="form-row advanced-row">
+            <div class="field">
+              <label>
+                Código IBGE do município
+                <span class="field-hint">(7 dígitos — substitui Região/UF)</span>
+              </label>
+              <input type="number" [(ngModel)]="newGeocode" placeholder="ex: 3304557"
+                     (ngModelChange)="newRegiao=''; newUf=''" />
+            </div>
+            <div class="field">
+              <label>
+                Rt mínimo <span class="field-hint">(alertar somente se Rt ≥ valor)</span>
+              </label>
+              <input type="number" step="0.1" min="0" [(ngModel)]="newRtMinimo" placeholder="ex: 1.2" />
+            </div>
+          </div>
+        }
+
+        <button class="btn-add" (click)="adicionarSub()" [disabled]="addingNova()">
+          @if (addingNova()) { <span class="spinner"></span> Adicionando… }
+          @else {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar assinatura
+          }
+        </button>
+      </div>
+
+      <!-- Lista -->
+      @if (subs().length) {
+        <div class="sub-list">
+          @for (s of subs(); track s.id) {
+            <div class="sub-item" [class.inativo]="!s.ativo">
+              <div class="sub-left">
+                <div class="sub-scope">{{ scopeLabel(s) }}</div>
+                <div class="sub-pills">
+                  <span class="pill doenca">{{ s.doenca === 'dengue' ? 'Dengue' : 'Chikungunya' }}</span>
+                  <span class="pill nivel">Nível ≥ {{ nivelLabel[s.nivel_minimo] }}</span>
+                  <span class="pill freq">{{ freqLabel[s.frequencia] ?? s.frequencia }}</span>
+                  @if (s.rt_minimo != null) { <span class="pill rt">Rt ≥ {{ s.rt_minimo }}</span> }
+                  <span class="pill canal">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    {{ s.canal }}
+                  </span>
+                </div>
+              </div>
+              <div class="sub-actions">
+                <button class="toggle-btn" [class.paused]="!s.ativo"
+                        (click)="toggleSub(s)" [title]="s.ativo ? 'Pausar' : 'Reativar'">
+                  @if (s.ativo) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  } @else {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  }
+                </button>
+                <button class="del-btn" (click)="removerSub(s.id)" title="Remover assinatura">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-subs">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <p>Nenhuma assinatura ainda. Adicione acima para receber alertas por e-mail.</p>
+        </div>
+      }
+    </section>
+
+  </div>
+</div>

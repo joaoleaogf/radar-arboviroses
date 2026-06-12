@@ -9,9 +9,9 @@ export const NIVEL_COR: Record<number, string> = {
 
 /** Versão em hex (para Leaflet/Highcharts, que não leem variáveis CSS). */
 export const NIVEL_HEX: Record<number, string> = {
-  0: '#475569',
-  1: '#22c55e',
-  2: '#eab308',
+  0: '#4b5e77',
+  1: '#10b981',
+  2: '#f59e0b',
   3: '#f97316',
   4: '#ef4444',
 };
