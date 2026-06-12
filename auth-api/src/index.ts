@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth.js';
 import { subscriptionRoutes } from './routes/subscriptions.js';
 import { adminRoutes } from './routes/admin.js';
 import { notifyRoutes } from './routes/notify.js';
+import { geoRoutes } from './routes/geo.js';
 
 const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
 
@@ -82,6 +83,7 @@ await app.register(authRoutes,         { prefix: '/auth' });
 await app.register(subscriptionRoutes, { prefix: '/subscriptions' });
 await app.register(adminRoutes,        { prefix: '/admin' });
 await app.register(notifyRoutes,       { prefix: '/notify' });
+await app.register(geoRoutes,          { prefix: '/geo' });
 
 app.get('/health', async () => {
   const { rows } = await pool.query('SELECT 1');

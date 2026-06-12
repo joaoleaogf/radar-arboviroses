@@ -1,4 +1,4 @@
 export const environment = {
-  apiBase:  'https://n8n.joaoleao.fun/webhook',
+  apiBase:  'https://api.joaoleao.fun/geo',
   authBase: 'https://api.joaoleao.fun',
 };
