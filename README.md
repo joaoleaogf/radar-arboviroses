@@ -125,7 +125,13 @@ npm test            # vitest (rotas com pool mockado)
 npm run build       # compila para dist/
 ```
 
-O GitHub Actions (`.github/workflows/ci.yml`) roda typecheck, testes, build e `npm audit` do auth-api (Node 20) e o build do dashboard (Node 22) em todo push para `main` e pull request.
+O GitHub Actions (`.github/workflows/ci.yml`) roda typecheck, testes, build e `npm audit` do auth-api (Node 20) e o build do dashboard (Node 22) em todo push para `main`/`feature/plataforma-saude` e pull request.
+
+### Deploy contínuo (VM Oracle)
+
+Após os testes passarem num push, o job `deploy` conecta na VM (152.70.214.49) via SSH, atualiza a branch `deploy` em `/opt/radar` para o commit pushado e reconstrói o `auth-api`. Em seguida valida `https://api.joaoleao.fun/health`.
+
+Requisito: secret `DEPLOY_SSH_KEY` no repositório (chave privada cujo par público está no `~/.ssh/authorized_keys` do usuário `ubuntu` na VM). Sem o secret, o job é pulado com aviso. O dashboard é publicado automaticamente pelo Cloudflare Pages (integração git própria). Migrations de banco (`db/init/0N-*.sql`) seguem manuais — ver seção acima.
 
 ### Rotação de segredos (JWT_SECRET / INTERNAL_SECRET)
 
