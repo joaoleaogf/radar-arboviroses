@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './auth/auth.guard';
-import { adminGuard } from './auth/auth.guard';
+import { authGuard, adminGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -14,16 +13,17 @@ export const routes: Routes = [
     ],
   },
   {
+    // Layout público — sem authGuard no pai.
+    // Perfil e Admin têm guards individuais.
     path: 'app',
-    canActivate: [authGuard],
     loadComponent: () => import('./layout/layout').then(m => m.Layout),
     children: [
-      { path: 'dashboard', loadComponent: () => import('./dashboard/dashboard').then(m => m.Dashboard) },
-      { path: 'analise',   loadComponent: () => import('./analise/analise').then(m => m.Analise) },
-      { path: 'relatorios',loadComponent: () => import('./relatorios/relatorios').then(m => m.Relatorios) },
-      { path: 'alertas',   loadComponent: () => import('./alertas/alertas').then(m => m.Alertas) },
-      { path: 'perfil',    loadComponent: () => import('./perfil/perfil').then(m => m.Perfil) },
-      { path: 'admin',     canActivate: [adminGuard], loadComponent: () => import('./admin/admin').then(m => m.Admin) },
+      { path: 'dashboard',  loadComponent: () => import('./dashboard/dashboard').then(m => m.Dashboard) },
+      { path: 'analise',    loadComponent: () => import('./analise/analise').then(m => m.Analise) },
+      { path: 'relatorios', loadComponent: () => import('./relatorios/relatorios').then(m => m.Relatorios) },
+      { path: 'alertas',    loadComponent: () => import('./alertas/alertas').then(m => m.Alertas) },
+      { path: 'perfil',     canActivate: [authGuard], loadComponent: () => import('./perfil/perfil').then(m => m.Perfil) },
+      { path: 'admin',      canActivate: [authGuard, adminGuard], loadComponent: () => import('./admin/admin').then(m => m.Admin) },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     ],
   },

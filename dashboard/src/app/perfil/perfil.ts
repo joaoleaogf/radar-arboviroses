@@ -27,7 +27,7 @@ const UFS_POR_REGIAO: Record<string, string[]> = {
   'Sul':          ['PR', 'RS', 'SC'],
 };
 const NIVEL_LABEL: Record<number, string> = { 1: 'Verde', 2: 'Amarelo', 3: 'Laranja', 4: 'Vermelho' };
-const FREQ_LABEL: Record<string, string>  = { imediato: 'Imediato', diario: 'Diário', semanal: 'Semanal' };
+const FREQ_LABEL:  Record<string, string>  = { imediato: 'Imediato', diario: 'Diário', semanal: 'Semanal' };
 
 @Component({
   selector: 'app-perfil',
@@ -43,6 +43,7 @@ export class Perfil implements OnInit {
 
   protected subs     = signal<Subscription[]>([]);
   protected editName = signal('');
+  protected editPhone = signal('');
   protected saving   = signal(false);
   protected savedOk  = signal(false);
 
@@ -67,14 +68,16 @@ export class Perfil implements OnInit {
   }
 
   ngOnInit(): void {
-    this.editName.set(this.auth.user()?.name ?? '');
+    const u = this.auth.user();
+    this.editName.set(u?.name ?? '');
+    this.editPhone.set(u?.phone ?? '');
     this.carregarSubs();
   }
 
   protected salvarPerfil(): void {
     if (!this.editName().trim()) return;
     this.saving.set(true);
-    this.auth.updateProfile(this.editName()).subscribe({
+    this.auth.updateProfile({ name: this.editName(), phone: this.editPhone() || undefined }).subscribe({
       next: () => { this.saving.set(false); this.savedOk.set(true); setTimeout(() => this.savedOk.set(false), 2500); },
       error: () => this.saving.set(false),
     });
@@ -85,9 +88,9 @@ export class Perfil implements OnInit {
     const geocode = this.newGeocode ? parseInt(this.newGeocode) : undefined;
     const body = {
       geocode,
-      uf:          !geocode && this.newUf ? this.newUf : undefined,
-      regiao:      !geocode && !this.newUf && this.newRegiao ? this.newRegiao : undefined,
-      doenca:      this.newDoenca,
+      uf:           !geocode && this.newUf ? this.newUf : undefined,
+      regiao:       !geocode && !this.newUf && this.newRegiao ? this.newRegiao : undefined,
+      doenca:       this.newDoenca,
       nivel_minimo: this.newNivel,
       canal:        'email',
       frequencia:   this.newFreq,

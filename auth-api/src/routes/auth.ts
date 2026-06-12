@@ -67,7 +67,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/me', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest) => {
     const payload = req.user as { sub: string };
     const { rows } = await pool.query(
-      'SELECT id, email, name, role, email_verified, avatar_url, created_at, last_login FROM app_user WHERE id = $1',
+      'SELECT id, email, name, role, email_verified, avatar_url, phone, created_at, last_login FROM app_user WHERE id = $1',
       [payload.sub],
     );
     if (!rows.length) throw { statusCode: 404, message: 'Usuário não encontrado' };
@@ -76,11 +76,19 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.put('/me', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
     const payload = req.user as { sub: string };
-    const { name } = req.body as { name?: string };
-    if (!name) return reply.code(400).send({ error: 'Nenhum campo para atualizar' });
+    const { name, phone } = req.body as { name?: string; phone?: string };
+    if (!name && phone === undefined) return reply.code(400).send({ error: 'Nenhum campo para atualizar' });
+
+    const sets: string[] = [];
+    const vals: unknown[] = [];
+    let idx = 1;
+    if (name)            { sets.push(`name=$${idx++}`);  vals.push(name); }
+    if (phone !== undefined) { sets.push(`phone=$${idx++}`); vals.push(phone || null); }
+    vals.push(payload.sub);
+
     const { rows } = await pool.query(
-      'UPDATE app_user SET name=$1 WHERE id=$2 RETURNING id,email,name,role',
-      [name, payload.sub],
+      `UPDATE app_user SET ${sets.join(',')} WHERE id=$${idx} RETURNING id,email,name,role,phone,avatar_url,email_verified,created_at,last_login`,
+      vals,
     );
     return rows[0];
   });

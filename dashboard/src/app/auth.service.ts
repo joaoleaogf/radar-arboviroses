@@ -11,6 +11,7 @@ export interface User {
   role: 'user' | 'admin';
   email_verified: boolean;
   avatar_url: string | null;
+  phone: string | null;
   created_at: string;
   last_login: string | null;
 }
@@ -31,12 +32,18 @@ export class AuthService {
   readonly isAdmin  = computed(() => this.user()?.role === 'admin');
   readonly loggedIn = computed(() => !!this.user());
 
+  // Verdadeiro quando a verificação inicial (cookie / localStorage) terminou.
+  // Evita redirect para /login no F5 enquanto o /auth/me ainda está em voo.
+  private readonly _initialized = signal(false);
+  readonly initialized = this._initialized.asReadonly();
+
   constructor() {
-    // Restaura token do localStorage (para o Bearer header),
-    // depois valida via /auth/me — aceita cookie httpOnly como fallback
     const saved = localStorage.getItem('radar_token');
     if (saved) this.token.set(saved);
-    this.me().subscribe({ error: () => this.clear() });
+    this.me().subscribe({
+      next: () => this._initialized.set(true),
+      error: () => { this.clear(); this._initialized.set(true); },
+    });
   }
 
   register(name: string, email: string, password: string): Observable<AuthResponse> {
@@ -54,8 +61,8 @@ export class AuthService {
       .pipe(tap(u => this.user.set(u)));
   }
 
-  updateProfile(name: string): Observable<User> {
-    return this.http.put<User>(`${this.base}/auth/me`, { name })
+  updateProfile(data: { name?: string; phone?: string }): Observable<User> {
+    return this.http.put<User>(`${this.base}/auth/me`, data)
       .pipe(tap(u => this.user.set(u)));
   }
 

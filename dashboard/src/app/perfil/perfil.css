@@ -59,6 +59,43 @@ label  { font-size: 0.73rem; font-weight: 600; color: var(--muted); letter-spaci
 .field-hint { font-weight: 400; color: var(--muted-2); font-size: 0.68rem; }
 
 /* ── Buttons ──────────────────────────────────────────── */
+/* ── Phone input ──────────────────────────────────────── */
+.input-phone-wrap {
+  position: relative;
+}
+.input-phone-icon {
+  position: absolute; left: 11px; top: 50%;
+  transform: translateY(-50%); color: var(--muted-2); pointer-events: none;
+}
+.input-phone-wrap input { padding-left: 34px; width: 100%; box-sizing: border-box; }
+
+/* ── Canais ───────────────────────────────────────────── */
+.canais-section { display: flex; flex-direction: column; gap: 8px; }
+.canais-section > label {
+  font-size: 0.73rem; font-weight: 600; color: var(--muted); letter-spacing: 0.02em;
+}
+.canais-list { display: flex; flex-direction: column; gap: 6px; }
+
+.canal-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 9px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.canal-item.em-breve { opacity: 0.55; }
+.canal-item svg { flex-shrink: 0; color: var(--muted-2); }
+.canal-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.canal-nome { font-size: 0.82rem; font-weight: 700; }
+.canal-info small { font-size: 0.72rem; color: var(--muted-2); overflow: hidden; text-overflow: ellipsis; }
+
+.canal-badge {
+  padding: 2px 9px; border-radius: 999px;
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.canal-badge.ativo { background: rgba(16,185,129,0.12); color: var(--n1); }
+.canal-badge.soon  { background: var(--surface-3); color: var(--muted-2); border: 1px solid var(--border); }
+
+/* ── btn-primary ──────────────────────────────────────── */
 .btn-primary {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   padding: 11px; background: var(--brand); color: #03090f;
