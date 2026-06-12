@@ -1,0 +1,89 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Painel Admin</h1>
+    <div class="tabs">
+      <button [class.ativo]="aba()==='stats'" (click)="aba.set('stats')">Estatísticas</button>
+      <button [class.ativo]="aba()==='users'" (click)="aba.set('users')">Usuários</button>
+      <button [class.ativo]="aba()==='etl'"   (click)="aba.set('etl')">ETL</button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  @if (aba() === 'stats') {
+    @if (stats(); as s) {
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Usuários</span>
+          <strong class="stat-val">{{ s.usuarios | number }}</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Municípios</span>
+          <strong class="stat-val">{{ s.municipios | number }}</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Registros de casos</span>
+          <strong class="stat-val">{{ s.casos | number }}</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Assinaturas ativas</span>
+          <strong class="stat-val">{{ s.assinaturas | number }}</strong>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- Users -->
+  @if (aba() === 'users') {
+    <div class="table-card">
+      <table>
+        <thead><tr>
+          <th>Nome</th><th>E-mail</th><th>Role</th>
+          <th class="num">Assinat.</th><th>Cadastro</th><th>Último login</th><th>Ação</th>
+        </tr></thead>
+        <tbody>
+          @for (u of users(); track u.id) {
+            <tr>
+              <td><strong>{{ u.name }}</strong></td>
+              <td class="email-cell">{{ u.email }}</td>
+              <td>
+                <span class="role-badge" [class.admin]="u.role==='admin'">{{ u.role }}</span>
+              </td>
+              <td class="num">{{ u.subscriptions }}</td>
+              <td class="date-cell">{{ fmtDate(u.created_at) }}</td>
+              <td class="date-cell">{{ fmtDate(u.last_login) }}</td>
+              <td>
+                <button class="role-toggle" (click)="toggleRole(u)">
+                  {{ u.role === 'admin' ? '↓ user' : '↑ admin' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- ETL -->
+  @if (aba() === 'etl') {
+    <div class="table-card">
+      <table>
+        <thead><tr>
+          <th>Workflow</th><th>Status</th><th>Início</th>
+          <th>Fim</th><th class="num">Registros</th><th>Erro</th>
+        </tr></thead>
+        <tbody>
+          @for (e of etl(); track e.id) {
+            <tr>
+              <td>{{ e.workflow }}</td>
+              <td><span class="status-badge" [class]="e.status">{{ e.status }}</span></td>
+              <td class="date-cell">{{ fmtDate(e.started) }}</td>
+              <td class="date-cell">{{ fmtDate(e.finished) }}</td>
+              <td class="num">{{ e.registros ?? '—' }}</td>
+              <td class="erro-cell">{{ e.erro ?? '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

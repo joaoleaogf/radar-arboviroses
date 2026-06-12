@@ -1,0 +1,71 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Relatórios</h1>
+      <p>{{ filtradas().length }} municípios · clique no cabeçalho para ordenar</p>
+    </div>
+    <div class="header-actions">
+      <div class="toggle" role="tablist">
+        <button [class.ativo]="doenca()==='dengue'"     (click)="trocar('dengue')">Dengue</button>
+        <button [class.ativo]="doenca()==='chikungunya'" (click)="trocar('chikungunya')">Chikungunya</button>
+      </div>
+      <button class="btn-export" (click)="exportCsv()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
+      </button>
+    </div>
+  </header>
+
+  <div class="filtros-row">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" [value]="busca()" (input)="busca.set($any($event.target).value)" placeholder="Buscar município ou UF…" />
+    </div>
+    <select [value]="nivelFiltro()" (change)="nivelFiltro.set(+$any($event.target).value)">
+      <option value="0">Todos os níveis</option>
+      <option value="1">Verde</option>
+      <option value="2">Amarelo</option>
+      <option value="3">Laranja</option>
+      <option value="4">Vermelho</option>
+    </select>
+  </div>
+
+  @if (carregando()) {
+    <div class="loading">Carregando…</div>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" (click)="setSort('nome')">Município</th>
+            <th class="sortable" (click)="setSort('uf')">UF</th>
+            <th class="sortable" (click)="setSort('nivel')">Nível</th>
+            <th class="sortable num" (click)="setSort('casos_est')">Casos est.</th>
+            <th class="sortable num" (click)="setSort('p_inc100k')">Inc./100k</th>
+            <th class="sortable num" (click)="setSort('rt')">Rt</th>
+            <th>SE</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of filtradas(); track r.geocode) {
+            <tr>
+              <td><strong>{{ r.nome }}</strong></td>
+              <td>{{ r.uf }}</td>
+              <td>
+                @if (r.nivel) {
+                  <span class="nivel-badge" [style.color]="hex[r.nivel]" [style.background]="hex[r.nivel]+'1a'">{{ label[r.nivel] }}</span>
+                } @else {
+                  <span class="sem-dados">—</span>
+                }
+              </td>
+              <td class="num">{{ r.casos_est != null ? (r.casos_est | number:'1.0-0') : '—' }}</td>
+              <td class="num">{{ r.p_inc100k != null ? (r.p_inc100k | number:'1.1-1') : '—' }}</td>
+              <td class="num" [class.rt-alto]="r.rt != null && r.rt > 1">{{ r.rt != null ? (r.rt | number:'1.2-2') : '—' }}</td>
+              <td class="se-cell">{{ r.se ? 'SE '+(r.se+'').slice(4)+'/'+(r.se+'').slice(0,4) : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

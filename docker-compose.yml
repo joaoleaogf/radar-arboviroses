@@ -51,6 +51,31 @@ services:
     ports:
       - "5678:5678"
 
+  auth-api:
+    build:
+      context: ./auth-api
+      dockerfile: Dockerfile
+    container_name: radar-auth
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-radar}:${POSTGRES_PASSWORD:-radar}@db:5432/${POSTGRES_DB:-radar}
+      JWT_SECRET: ${JWT_SECRET:-changeme-jwt-secret-min32chars-here}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:3001}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:4200}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-radar-internal-2024}
+      DASHBOARD_URL: ${FRONTEND_URL:-http://localhost:4200}
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+
 volumes:
   db-data:
   n8n-data:

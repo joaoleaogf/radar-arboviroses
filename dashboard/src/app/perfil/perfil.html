@@ -1,0 +1,118 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Perfil</h1>
+    <p>Gerencie seus dados e preferências de alertas</p>
+  </header>
+
+  <div class="page-grid">
+    <!-- ── Dados pessoais ──────────────────────────────── -->
+    <section class="card">
+      <h2>Dados pessoais</h2>
+
+      @if (auth.user(); as u) {
+        <div class="user-card">
+          @if (u.avatar_url) {
+            <img [src]="u.avatar_url" class="big-avatar" alt="Avatar" />
+          } @else {
+            <div class="big-initials">{{ u.name.charAt(0).toUpperCase() }}</div>
+          }
+          <div>
+            <strong>{{ u.name }}</strong>
+            <small>{{ u.email }}</small>
+            <span class="role-badge" [class.admin]="u.role === 'admin'">{{ u.role }}</span>
+          </div>
+        </div>
+      }
+
+      <div class="field">
+        <label>Nome de exibição</label>
+        <input type="text" [value]="editName()" (input)="editName.set($any($event.target).value)" placeholder="Seu nome" />
+      </div>
+
+      <button class="btn-primary" (click)="salvarPerfil()" [disabled]="saving()">
+        @if (saving()) { Salvando… } @else if (savedOk()) { ✓ Salvo! } @else { Salvar alterações }
+      </button>
+    </section>
+
+    <!-- ── Alertas ─────────────────────────────────────── -->
+    <section class="card card-wide">
+      <div class="card-head">
+        <h2>Assinaturas de alerta</h2>
+        <span class="badge-count">{{ subs().length }}</span>
+      </div>
+
+      <!-- Nova assinatura -->
+      <div class="nova-sub">
+        <h3>Nova assinatura</h3>
+        <div class="form-row">
+          <div class="field">
+            <label>Doença</label>
+            <select [(ngModel)]="newDoenca">
+              <option value="dengue">Dengue</option>
+              <option value="chikungunya">Chikungunya</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Região</label>
+            <select [(ngModel)]="newRegiao" (ngModelChange)="newUf=''">
+              <option value="">Todo o Brasil</option>
+              @for (r of regioes; track r) { <option [value]="r">{{ r }}</option> }
+            </select>
+          </div>
+          @if (ufsDaRegiao.length) {
+            <div class="field">
+              <label>UF (opcional)</label>
+              <select [(ngModel)]="newUf">
+                <option value="">Toda a região</option>
+                @for (uf of ufsDaRegiao; track uf) { <option [value]="uf">{{ uf }}</option> }
+              </select>
+            </div>
+          }
+          <div class="field">
+            <label>Nível mínimo</label>
+            <select [(ngModel)]="newNivel">
+              @for (n of [2,3,4]; track n) { <option [value]="n">{{ nivelLabel[n] }}</option> }
+            </select>
+          </div>
+          <button class="btn-add" (click)="adicionarSub()" [disabled]="addingNova()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de assinaturas -->
+      @if (subs().length) {
+        <div class="sub-list">
+          @for (s of subs(); track s.id) {
+            <div class="sub-item" [class.inativo]="!s.ativo">
+              <div class="sub-info">
+                <span class="sub-scope">
+                  @if (s.municipio_nome) { {{ s.municipio_nome }} }
+                  @else if (s.uf) { UF: {{ s.uf }} }
+                  @else if (s.regiao) { {{ s.regiao }} }
+                  @else { Todo o Brasil }
+                </span>
+                <span class="sub-meta">{{ s.doenca === 'dengue' ? 'Dengue' : 'Chikungunya' }} · Nível ≥ {{ nivelLabel[s.nivel_minimo] }} · {{ s.canal }}</span>
+              </div>
+              <div class="sub-actions">
+                <button class="toggle-btn" (click)="toggleSub(s)" [title]="s.ativo ? 'Pausar' : 'Ativar'">
+                  @if (s.ativo) {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  } @else {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  }
+                </button>
+                <button class="del-btn" (click)="removerSub(s.id)" title="Remover">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="empty-subs">Nenhuma assinatura ativa. Adicione acima para receber alertas por e-mail.</p>
+      }
+    </section>
+  </div>
+</div>

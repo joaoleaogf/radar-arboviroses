@@ -1,0 +1,73 @@
+.page { padding: 32px; max-width: 1100px; }
+
+.page-header { margin-bottom: 28px; }
+.page-header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 4px; }
+.page-header p  { color: var(--muted); font-size: 0.875rem; margin: 0; }
+
+.loading { padding: 64px; text-align: center; color: var(--muted); }
+
+.section { margin-bottom: 32px; }
+.section h2 { font-size: 0.9rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 14px; }
+
+.compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+
+.compare-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+
+.compare-label { font-size: 0.78rem; color: var(--muted); font-weight: 600; letter-spacing: 0.03em; }
+
+.compare-bar-row { margin: 10px 0 8px; }
+.bar-wrap { height: 6px; background: rgba(139,92,246,.2); border-radius: 999px; overflow: hidden; }
+.bar.dengue { height: 100%; background: var(--brand); border-radius: 999px; }
+
+.compare-nums {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.82rem;
+}
+.dengue-val, .chik-val { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; }
+.dengue-val { color: var(--brand); }
+.chik-val   { color: #c4b5fd; }
+.doenca-lbl { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.dengue-lbl { color: var(--brand); }
+.chik-lbl   { color: #c4b5fd; }
+.separator  { color: var(--muted-2); }
+
+.regiao-list { display: flex; flex-direction: column; gap: 10px; }
+
+.regiao-row {
+  display: grid; grid-template-columns: 140px 1fr 110px 120px;
+  align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px;
+}
+
+.regiao-nome { font-weight: 700; font-size: 0.875rem; }
+
+.regiao-bar-wrap { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.regiao-bar { height: 100%; background: var(--n3); border-radius: 999px; transition: width 0.4s; }
+
+.regiao-num  { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.875rem; text-align: right; }
+.regiao-pct  { color: var(--muted); font-size: 0.75rem; text-align: right; }
+
+.tops-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 700px) { .tops-grid { grid-template-columns: 1fr; } }
+
+.top-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.top-section h2 { margin-bottom: 12px; }
+
+.top-list { display: flex; flex-direction: column; gap: 6px; }
+
+.top-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px;
+  font-size: 0.875rem; transition: background 0.1s;
+}
+.top-row:hover { background: var(--surface-2); }
+
+.top-rank { font-size: 0.72rem; font-weight: 700; color: var(--muted-2); min-width: 20px; }
+.top-nome { flex: 1; font-weight: 600; }
+.top-casos { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); font-size: 0.82rem; }
+
+.nivel-badge { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }

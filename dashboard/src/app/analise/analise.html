@@ -1,0 +1,70 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Análise comparativa</h1>
+    <p>Dengue vs Chikungunya · distribuição regional</p>
+  </header>
+
+  @if (carregando()) {
+    <div class="loading">Carregando…</div>
+  } @else {
+    <!-- Comparação Dengue vs Chikungunya -->
+    <section class="section">
+      <h2>Dengue vs Chikungunya</h2>
+      <div class="compare-grid">
+        @for (row of comparacao()!; track row.label) {
+          <div class="compare-card">
+            <span class="compare-label">{{ row.label }}</span>
+            <div class="compare-bar-row">
+              <div class="bar-wrap">
+                <div class="bar dengue" [style.width.%]="row.dengue / (row.dengue + row.chikun) * 100"></div>
+              </div>
+            </div>
+            <div class="compare-nums">
+              <span class="dengue-val">{{ row.dengue | number:'1.0-0' }}</span>
+              <span class="doenca-lbl dengue-lbl">Dengue</span>
+              <span class="separator">·</span>
+              <span class="doenca-lbl chik-lbl">Chikungunya</span>
+              <span class="chik-val">{{ row.chikun | number:'1.0-0' }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Ranking por região -->
+    <section class="section">
+      <h2>Ranking por região — Dengue</h2>
+      <div class="regiao-list">
+        @for (r of regioes(); track r.regiao) {
+          <div class="regiao-row">
+            <span class="regiao-nome">{{ r.regiao }}</span>
+            <div class="regiao-bar-wrap">
+              <div class="regiao-bar" [style.width.%]="r.em_alerta / (regioes()[0].em_alerta || 1) * 100"></div>
+            </div>
+            <span class="regiao-num">{{ r.em_alerta }} alerta</span>
+            <span class="regiao-pct">{{ r.pct_alerta | number:'1.1-1' }}% dos munis</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Top 10 dengue -->
+    <div class="tops-grid">
+      @for (doencaData of [{label:'Dengue', data: dengue()}, {label:'Chikungunya', data: chikun()}]; track doencaData.label) {
+        <section class="section top-section">
+          <h2>Top 10 · {{ doencaData.label }}</h2>
+          <div class="top-list">
+            @for (t of doencaData.data?.top_alertas?.slice(0,10) ?? []; track t.geocode; let i = $index) {
+              <div class="top-row">
+                <span class="top-rank">#{{ i + 1 }}</span>
+                <span class="nivel-badge" [style.color]="hex[t.nivel]" [style.background]="hex[t.nivel]+'1a'">{{ label[t.nivel] }}</span>
+                <span class="top-nome">{{ t.nome }}</span>
+                <span class="top-casos">{{ t.casos_est | number:'1.0-0' }}</span>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+</div>

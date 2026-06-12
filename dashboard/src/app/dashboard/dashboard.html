@@ -1,0 +1,201 @@
+<header class="topo">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+        <path d="M8 12h8M12 8l4 4-4 4"/>
+        <circle cx="12" cy="12" r="3" fill="currentColor" opacity=".25"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>Radar de <span class="brand-accent">Arboviroses</span></h1>
+      <p>{{ contexto() }} · dengue &amp; chikungunya · dados do InfoDengue</p>
+    </div>
+  </div>
+
+  <div class="header-right">
+    @if (resumo()?.ultima_se) {
+      <span class="semana-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        {{ semanaNum() }}
+      </span>
+    }
+    <div class="toggle" role="tablist">
+      <button role="tab" [class.ativo]="doenca() === 'dengue'" (click)="trocarDoenca('dengue')">Dengue</button>
+      <button role="tab" [class.ativo]="doenca() === 'chikungunya'" (click)="trocarDoenca('chikungunya')">Chikungunya</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Barra de filtros ─────────────────────────────────────── -->
+<nav class="filtros" aria-label="Filtros geográficos">
+  <div class="filtro-esq">
+    <button
+      class="chip"
+      [class.ativo]="!regiaoSel()"
+      (click)="selecionarRegiao(null)"
+      title="Ver todo o Brasil"
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Brasil
+    </button>
+
+    @if (!regiaoSel()) {
+      <span class="filtro-sep">›</span>
+      @for (r of regioes; track r) {
+        <button
+          class="chip"
+          [class.ativo]="regiaoSel() === r"
+          (click)="selecionarRegiao(r)"
+        >{{ r }}</button>
+      }
+    } @else {
+      <span class="filtro-sep">›</span>
+      <button class="chip chip-ativo-reg" (click)="selecionarRegiao(regiaoSel())">
+        {{ regiaoSel() }}
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <span class="filtro-sep">›</span>
+      @for (uf of ufsDaRegiao(); track uf) {
+        <button
+          class="chip"
+          [class.ativo]="ufSel() === uf"
+          (click)="selecionarUf(uf)"
+        >{{ uf }}</button>
+      }
+    }
+  </div>
+
+  <div class="filtro-dir">
+    <span class="filtro-label">Mapa:</span>
+    <div class="toggle-mapa" role="tablist">
+      <button role="tab" [class.ativo]="tipoMapa() === 'alerta'"     (click)="tipoMapa.set('alerta')">Alerta</button>
+      <button role="tab" [class.ativo]="tipoMapa() === 'incidencia'" (click)="tipoMapa.set('incidencia')">Inc./100k</button>
+    </div>
+  </div>
+</nav>
+
+@if (resumo(); as r) {
+  <section class="cards">
+    <article class="card">
+      <div class="card-top">
+        <span class="rotulo">Municípios monitorados</span>
+        <span class="card-ico ico-map">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/>
+            <path d="M9 4v13M15 7v13"/>
+          </svg>
+        </span>
+      </div>
+      <strong class="valor">{{ r.municipios }}</strong>
+    </article>
+
+    <article class="card card-alerta" [class.zero]="r.em_alerta === 0">
+      <div class="card-top">
+        <span class="rotulo">Em alerta <span class="chip-abrev">laranja + vermelho</span></span>
+        <span class="card-ico ico-alert">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </span>
+      </div>
+      <strong class="valor">{{ r.em_alerta }}</strong>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <span class="rotulo">Casos est. · semana de {{ semana() }}</span>
+        <span class="card-ico ico-chart">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </span>
+      </div>
+      <strong class="valor">{{ r.casos_est_ultima_semana | number: '1.0-0' }}</strong>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <span class="rotulo">Última carga do ETL</span>
+        <span class="card-ico ico-cal">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </span>
+      </div>
+      <strong class="valor pequeno">{{ dataCarga() }}</strong>
+    </article>
+  </section>
+}
+
+<main class="grid">
+  <section class="painel mapa-painel">
+    <div class="painel-header">
+      <h2>Mapa
+        @if (tipoMapa() === 'incidencia') {
+          <span class="mapa-tipo-badge">Incidência / 100k</span>
+        } @else {
+          <span class="mapa-tipo-badge">Nível de alerta</span>
+        }
+      </h2>
+      <span class="doenca-badge" [class.dengue-b]="doenca() === 'dengue'" [class.chik-b]="doenca() === 'chikungunya'">
+        {{ doenca() === 'dengue' ? 'Dengue' : 'Chikungunya' }}
+      </span>
+    </div>
+    <app-mapa
+      [doenca]="doenca()"
+      [uf]="filtro().uf ?? null"
+      [regiao]="filtro().regiao ?? null"
+      [tipoMapa]="tipoMapa()"
+      (selecionar)="onSelecionar($event)"
+    />
+  </section>
+
+  <section class="painel direita">
+    <div class="painel-header">
+      <h2>
+        Série histórica
+        @if (selecionado(); as m) {
+          <span class="muni">· {{ m.nome }}</span>
+        }
+      </h2>
+    </div>
+    <app-serie
+      [geocode]="selecionado()?.geocode ?? null"
+      [nome]="selecionado()?.nome ?? ''"
+      [doenca]="doenca()"
+    />
+
+    @if (resumo()?.top_alertas?.length) {
+      <div class="ranking-header">
+        <h3>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Top municípios em alerta
+        </h3>
+      </div>
+      <ul class="ranking">
+        @for (t of resumo()!.top_alertas; track t.geocode) {
+          <li class="ranking-item" (click)="onSelecionarAlerta(t)">
+            <span class="nivel-badge" [style.color]="hex[t.nivel]" [style.background]="hex[t.nivel] + '1a'">
+              {{ label[t.nivel] }}
+            </span>
+            <span class="nome">{{ t.nome }}</span>
+            <span class="casos-val">{{ t.casos_est | number: '1.0-0' }} <span class="casos-label">casos</span></span>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</main>
+
+<footer class="rodape">
+  Pipeline orquestrado em <strong>n8n</strong> · dados:
+  <a href="https://info.dengue.mat.br" target="_blank" rel="noopener">InfoDengue (Fiocruz/FGV)</a>
+  · <a href="https://servicodados.ibge.gov.br" target="_blank" rel="noopener">IBGE</a>
+  · <a href="https://github.com/joaoleaogf" target="_blank" rel="noopener">@joaoleaogf</a>
+</footer>
