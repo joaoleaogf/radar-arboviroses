@@ -20,9 +20,9 @@ export async function geoRoutes(app: FastifyInstance) {
          )), '[]'::jsonb)
        )::text AS fc
        FROM municipio m
-       LEFT JOIN situacao_atual s ON s.geocode = m.geocode AND s.doenca = $1
-       WHERE ($2 = '*' OR m.uf = $2)
-         AND ($3 = '*' OR m.regiao = $3)`,
+       LEFT JOIN situacao_atual s ON s.geocode = m.geocode AND s.doenca = $1::text
+       WHERE ($2::text = '*' OR m.uf = $2::text)
+         AND ($3::text = '*' OR m.regiao = $3::text)`,
       [doenca, uf, regiao],
     );
 
@@ -37,20 +37,20 @@ export async function geoRoutes(app: FastifyInstance) {
     const { rows } = await pool.query<{ payload: string }>(
       `WITH filtro AS (
          SELECT geocode FROM municipio
-         WHERE ($2 = '*' OR uf = $2) AND ($3 = '*' OR regiao = $3)
+         WHERE ($2::text = '*' OR uf = $2::text) AND ($3::text = '*' OR regiao = $3::text)
        )
        SELECT jsonb_build_object(
-         'doenca', $1,
+         'doenca', $1::text,
          'municipios',              (SELECT count(*) FROM filtro),
-         'em_alerta',               (SELECT count(*) FROM situacao_atual s JOIN filtro f ON f.geocode = s.geocode WHERE s.doenca = $1 AND s.nivel >= 3),
-         'casos_est_ultima_semana', (SELECT COALESCE(sum(s.casos_est), 0) FROM situacao_atual s JOIN filtro f ON f.geocode = s.geocode WHERE s.doenca = $1),
-         'ultima_se',               (SELECT max(se) FROM caso_semana WHERE doenca = $1),
+         'em_alerta',               (SELECT count(*) FROM situacao_atual s JOIN filtro f ON f.geocode = s.geocode WHERE s.doenca = $1::text AND s.nivel >= 3),
+         'casos_est_ultima_semana', (SELECT COALESCE(sum(s.casos_est), 0) FROM situacao_atual s JOIN filtro f ON f.geocode = s.geocode WHERE s.doenca = $1::text),
+         'ultima_se',               (SELECT max(se) FROM caso_semana WHERE doenca = $1::text),
          'ultima_carga',            (SELECT max(finished) FROM etl_run WHERE status = 'success'),
          'top_alertas', (
            SELECT COALESCE(jsonb_agg(t), '[]'::jsonb) FROM (
              SELECT s.geocode, s.nome, s.nivel, s.casos_est, s.rt
              FROM situacao_atual s JOIN filtro f ON f.geocode = s.geocode
-             WHERE s.doenca = $1
+             WHERE s.doenca = $1::text
              ORDER BY s.nivel DESC, s.casos_est DESC NULLS LAST LIMIT 5
            ) t
          )
@@ -77,7 +77,7 @@ export async function geoRoutes(app: FastifyInstance) {
              'se', se, 'data', data_inise, 'casos', casos, 'casos_est', casos_est,
              'nivel', nivel, 'rt', rt, 'p_inc100k', p_inc100k
            ) ORDER BY se)
-           FROM caso_semana WHERE geocode = $1::bigint AND doenca = $2
+           FROM caso_semana WHERE geocode = $1::bigint AND doenca = $2::text
          ), '[]'::jsonb)
        )::text AS payload`,
       [geocode, doenca],
