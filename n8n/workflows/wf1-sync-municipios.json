@@ -19,50 +19,65 @@
       "typeVersion": 1.2,
       "position": [0, 0],
       "parameters": {
-        "rule": {
-          "interval": [
-            { "field": "cronExpression", "expression": "0 6 1 * *" }
-          ]
-        }
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 6 1 * *" }] }
       }
     },
     {
-      "id": "wf1-http-mg",
-      "name": "Buscar municípios MG",
+      "id": "wf1-code-ufs",
+      "name": "Listar UFs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 100],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const UFS = [\n  {uf:'AC',ufId:12, regiao:'Norte'},\n  {uf:'AL',ufId:27, regiao:'Nordeste'},\n  {uf:'AP',ufId:16, regiao:'Norte'},\n  {uf:'AM',ufId:13, regiao:'Norte'},\n  {uf:'BA',ufId:29, regiao:'Nordeste'},\n  {uf:'CE',ufId:23, regiao:'Nordeste'},\n  {uf:'DF',ufId:53, regiao:'Centro-Oeste'},\n  {uf:'ES',ufId:32, regiao:'Sudeste'},\n  {uf:'GO',ufId:52, regiao:'Centro-Oeste'},\n  {uf:'MA',ufId:21, regiao:'Nordeste'},\n  {uf:'MT',ufId:51, regiao:'Centro-Oeste'},\n  {uf:'MS',ufId:50, regiao:'Centro-Oeste'},\n  {uf:'MG',ufId:31, regiao:'Sudeste'},\n  {uf:'PA',ufId:15, regiao:'Norte'},\n  {uf:'PB',ufId:25, regiao:'Nordeste'},\n  {uf:'PR',ufId:41, regiao:'Sul'},\n  {uf:'PE',ufId:26, regiao:'Nordeste'},\n  {uf:'PI',ufId:22, regiao:'Nordeste'},\n  {uf:'RJ',ufId:33, regiao:'Sudeste'},\n  {uf:'RN',ufId:24, regiao:'Nordeste'},\n  {uf:'RS',ufId:43, regiao:'Sul'},\n  {uf:'RO',ufId:11, regiao:'Norte'},\n  {uf:'RR',ufId:14, regiao:'Norte'},\n  {uf:'SC',ufId:42, regiao:'Sul'},\n  {uf:'SP',ufId:35, regiao:'Sudeste'},\n  {uf:'SE',ufId:28, regiao:'Nordeste'},\n  {uf:'TO',ufId:17, regiao:'Norte'},\n];\nreturn UFS.map(u => ({ json: u }));"
+      }
+    },
+    {
+      "id": "wf1-por-uf",
+      "name": "Por UF",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [480, 100],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "wf1-http-munis",
+      "name": "Municípios da UF",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [240, 100],
+      "position": [720, 200],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 3000,
+      "waitBetweenTries": 5000,
       "parameters": {
-        "url": "https://servicodados.ibge.gov.br/api/v1/localidades/estados/MG/municipios",
+        "url": "=https://servicodados.ibge.gov.br/api/v1/localidades/estados/{{ $json.uf }}/municipios",
         "options": { "timeout": 30000 }
       }
     },
     {
-      "id": "wf1-code-filtro",
-      "name": "Filtrar Sul/Sudoeste",
+      "id": "wf1-code-agregar",
+      "name": "Agregar UF",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 100],
+      "position": [960, 200],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const all = items.map((i) => i.json);\nconst sul = all.filter((m) => m.microrregiao?.mesorregiao?.nome === 'Sul/Sudoeste de Minas');\nif (sul.length === 0) {\n  throw new Error('Nenhum município da mesorregião Sul/Sudoeste de Minas encontrado na resposta do IBGE');\n}\nconst mesoId = sul[0].microrregiao.mesorregiao.id;\nreturn [{ json: { mesoId, municipios: sul.map((m) => ({ geocode: m.id, nome: m.nome })) } }];"
+        "jsCode": "const ufInfo = $('Por UF').first().json;\nconst municipios = items.map(i => ({ geocode: i.json.id, nome: i.json.nome }));\nreturn [{ json: { uf: ufInfo.uf, ufId: ufInfo.ufId, regiao: ufInfo.regiao, municipios } }];"
       }
     },
     {
       "id": "wf1-http-malha",
-      "name": "Buscar malha (GeoJSON)",
+      "name": "Malha da UF",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 100],
+      "position": [1200, 200],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 3000,
+      "waitBetweenTries": 8000,
       "parameters": {
-        "url": "=https://servicodados.ibge.gov.br/api/v3/malhas/mesorregioes/{{ $json.mesoId }}?formato=application/vnd.geo+json&intrarregiao=municipio&qualidade=minima",
-        "options": { "timeout": 60000 }
+        "url": "=https://servicodados.ibge.gov.br/api/v3/malhas/estados/{{ $json.ufId }}?formato=application/vnd.geo+json&intrarregiao=municipio&qualidade=minima",
+        "options": { "timeout": 120000 }
       }
     },
     {
@@ -70,10 +85,10 @@
       "name": "Montar registros",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 100],
+      "position": [1440, 200],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// A malha do IBGE vem com content-type vnd.geo+json, que o n8n não\n// auto-parseia: o corpo chega como string em json.data.\nconst raw = items[0].json;\nconst fc = raw.features ? raw : (typeof raw.data === 'string' ? JSON.parse(raw.data) : raw.data);\nconst { municipios } = $('Filtrar Sul/Sudoeste').first().json;\nconst byCode = new Map(municipios.map((m) => [String(m.geocode), m.nome]));\nreturn (fc.features || [])\n  .filter((f) => byCode.has(String(f.properties.codarea)))\n  .map((f) => ({\n    json: {\n      geocode: Number(f.properties.codarea),\n      nome: byCode.get(String(f.properties.codarea)),\n      mesorregiao: 'Sul/Sudoeste de Minas',\n      geomJson: JSON.stringify(f.geometry),\n    },\n  }));"
+        "jsCode": "const raw = items[0].json;\nconst fc = raw.features ? raw : (typeof raw.data === 'string' ? JSON.parse(raw.data) : raw.data);\nconst { uf, regiao, municipios } = $('Agregar UF').first().json;\nconst byCode = new Map(municipios.map(m => [String(m.geocode), m.nome]));\nconst registros = (fc.features || [])\n  .filter(f => byCode.has(String(f.properties.codarea)))\n  .map(f => ({\n    geocode:  Number(f.properties.codarea),\n    nome:     byCode.get(String(f.properties.codarea)),\n    uf,\n    regiao,\n    geomJson: JSON.stringify(f.geometry),\n  }));\nif (registros.length === 0) throw new Error(`Sem geometria para UF ${uf}`);\nreturn [{ json: { uf, total: registros.length, registros } }];"
       }
     },
     {
@@ -81,37 +96,29 @@
       "name": "Upsert municípios",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1200, 100],
-      "credentials": {
-        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
-      },
+      "position": [1680, 200],
+      "credentials": { "postgres": { "id": "radarpg01", "name": "Radar Postgres" } },
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO municipio (geocode, nome, mesorregiao, geom, centroid)\nVALUES ($1, $2, $3,\n        ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326)),\n        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326)))\nON CONFLICT (geocode) DO UPDATE\nSET nome = EXCLUDED.nome,\n    mesorregiao = EXCLUDED.mesorregiao,\n    geom = EXCLUDED.geom,\n    centroid = EXCLUDED.centroid;",
-        "options": {
-          "queryReplacement": "={{ $json.geocode }},{{ $json.nome }},{{ $json.mesorregiao }},{{ $json.geomJson }}"
-        }
+        "query": "INSERT INTO municipio (geocode, nome, uf, regiao, geom, centroid)\nSELECT\n  (r->>'geocode')::bigint,\n  r->>'nome',\n  r->>'uf',\n  r->>'regiao',\n  ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(r->>'geomJson'), 4326)),\n  ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(r->>'geomJson'), 4326))\nFROM jsonb_array_elements($1::jsonb) r\nON CONFLICT (geocode) DO UPDATE\nSET nome     = EXCLUDED.nome,\n    uf       = EXCLUDED.uf,\n    regiao   = EXCLUDED.regiao,\n    geom     = EXCLUDED.geom,\n    centroid = EXCLUDED.centroid;",
+        "options": { "queryReplacement": "={{ JSON.stringify($json.registros) }}" }
       }
     }
   ],
   "connections": {
-    "Todo mês": {
-      "main": [[{ "node": "Buscar municípios MG", "type": "main", "index": 0 }]]
+    "Executar manualmente": { "main": [[{ "node": "Listar UFs",         "type": "main", "index": 0 }]] },
+    "Todo mês":             { "main": [[{ "node": "Listar UFs",         "type": "main", "index": 0 }]] },
+    "Listar UFs":           { "main": [[{ "node": "Por UF",             "type": "main", "index": 0 }]] },
+    "Por UF": {
+      "main": [
+        [],
+        [{ "node": "Municípios da UF", "type": "main", "index": 0 }]
+      ]
     },
-    "Executar manualmente": {
-      "main": [[{ "node": "Buscar municípios MG", "type": "main", "index": 0 }]]
-    },
-    "Buscar municípios MG": {
-      "main": [[{ "node": "Filtrar Sul/Sudoeste", "type": "main", "index": 0 }]]
-    },
-    "Filtrar Sul/Sudoeste": {
-      "main": [[{ "node": "Buscar malha (GeoJSON)", "type": "main", "index": 0 }]]
-    },
-    "Buscar malha (GeoJSON)": {
-      "main": [[{ "node": "Montar registros", "type": "main", "index": 0 }]]
-    },
-    "Montar registros": {
-      "main": [[{ "node": "Upsert municípios", "type": "main", "index": 0 }]]
-    }
+    "Municípios da UF": { "main": [[{ "node": "Agregar UF",        "type": "main", "index": 0 }]] },
+    "Agregar UF":        { "main": [[{ "node": "Malha da UF",       "type": "main", "index": 0 }]] },
+    "Malha da UF":       { "main": [[{ "node": "Montar registros",  "type": "main", "index": 0 }]] },
+    "Montar registros":  { "main": [[{ "node": "Upsert municípios", "type": "main", "index": 0 }]] },
+    "Upsert municípios": { "main": [[{ "node": "Por UF",            "type": "main", "index": 0 }]] }
   }
 }

@@ -5,9 +5,16 @@ import { environment } from '../environments/environment';
 
 export type Doenca = 'dengue' | 'chikungunya';
 
+export interface FilterParams {
+  uf?: string;
+  regiao?: string;
+}
+
 export interface MunicipioProps {
   geocode: number;
   nome: string;
+  uf: string | null;
+  regiao: string | null;
   pop: number | null;
   se: number | null;
   casos: number | null;
@@ -62,10 +69,11 @@ export class RadarService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiBase;
 
-  municipios(doenca: Doenca): Observable<MunicipiosGeoJson> {
-    return this.http.get<MunicipiosGeoJson>(`${this.base}/municipios`, {
-      params: { doenca },
-    });
+  municipios(doenca: Doenca, filter: FilterParams = {}): Observable<MunicipiosGeoJson> {
+    const params: Record<string, string> = { doenca };
+    if (filter.uf) params['uf'] = filter.uf;
+    if (filter.regiao) params['regiao'] = filter.regiao;
+    return this.http.get<MunicipiosGeoJson>(`${this.base}/municipios`, { params });
   }
 
   serie(geocode: number, doenca: Doenca): Observable<Serie> {
@@ -74,7 +82,10 @@ export class RadarService {
     });
   }
 
-  resumo(doenca: Doenca): Observable<Resumo> {
-    return this.http.get<Resumo>(`${this.base}/resumo`, { params: { doenca } });
+  resumo(doenca: Doenca, filter: FilterParams = {}): Observable<Resumo> {
+    const params: Record<string, string> = { doenca };
+    if (filter.uf) params['uf'] = filter.uf;
+    if (filter.regiao) params['regiao'] = filter.regiao;
+    return this.http.get<Resumo>(`${this.base}/resumo`, { params });
   }
 }

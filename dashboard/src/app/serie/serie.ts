@@ -9,51 +9,111 @@ import {
   input,
   viewChild,
 } from '@angular/core';
-import Highcharts from 'highcharts';
+import Highcharts from 'highcharts/highstock';
 import { Doenca, RadarService } from '../radar.service';
-import { NIVEL_HEX } from '../nivel';
+import { NIVEL_HEX, NIVEL_LABEL } from '../nivel';
+
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function tsFromIso(iso: string): number {
+  // Fixa meio-dia UTC para evitar erros de fuso
+  return Date.UTC(
+    +iso.slice(0, 4),
+    +iso.slice(5, 7) - 1,
+    +iso.slice(8, 10),
+    12, 0, 0,
+  );
+}
+
+function fmtPtBr(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
 
 @Component({
   selector: 'app-serie',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (geocode()) {
-      <div #host class="grafico"></div>
+      <div class="chart-wrap">
+        <div class="chart-hint">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          Arraste para zoom · Shift+arraste para navegar · Scroll para zoom fino
+        </div>
+        <div #host class="grafico"></div>
+      </div>
     } @else {
-      <div class="vazio">Selecione um município no mapa para ver a série histórica.</div>
+      <div class="vazio">
+        <div class="vazio-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <p>Selecione um município no mapa<br>para ver a série histórica.</p>
+      </div>
     }
   `,
-  styles: [
-    `
-      .grafico {
-        width: 100%;
-        height: 320px;
-      }
-      .vazio {
-        display: grid;
-        place-items: center;
-        height: 320px;
-        color: var(--muted);
-        text-align: center;
-        padding: 0 24px;
-      }
-    `,
-  ],
+  styles: [`
+    .chart-wrap {
+      padding: 10px 4px 0;
+    }
+    .chart-hint {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.68rem;
+      color: var(--muted-2);
+      padding: 0 12px 6px;
+      letter-spacing: 0.01em;
+    }
+    .grafico {
+      width: 100%;
+      height: 370px;
+    }
+    .vazio {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      height: 340px;
+      color: var(--muted);
+      text-align: center;
+      padding: 0 24px;
+    }
+    .vazio-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      color: var(--muted-2);
+    }
+    .vazio p {
+      margin: 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+  `],
 })
 export class Serie implements AfterViewInit, OnDestroy {
   private readonly radar = inject(RadarService);
   private readonly host = viewChild<ElementRef<HTMLElement>>('host');
 
   readonly geocode = input<number | null>(null);
-  readonly nome = input<string>('');
-  readonly doenca = input.required<Doenca>();
+  readonly nome    = input<string>('');
+  readonly doenca  = input.required<Doenca>();
 
   private chart?: Highcharts.Chart;
 
   constructor() {
     effect(() => {
       const geocode = this.geocode();
-      const doenca = this.doenca();
+      const doenca  = this.doenca();
       if (geocode) this.carregar(geocode, doenca);
     });
   }
@@ -72,45 +132,302 @@ export class Serie implements AfterViewInit, OnDestroy {
       const host = this.host()?.nativeElement;
       if (!host) return;
 
-      const categorias = res.serie.map((p) => String(p.se).slice(4) + '/' + String(p.se).slice(0, 4));
-      const casosEst = res.serie.map((p) => (p.casos_est != null ? Math.round(p.casos_est) : null));
-      const casos = res.serie.map((p) => p.casos ?? null);
-      const cores = res.serie.map((p) => NIVEL_HEX[p.nivel ?? 0]);
+      const pts = res.serie;
+
+      // Série de barras: casos estimados coloridos por nível de alerta
+      const casosEstData = pts.map(p => ({
+        x:         tsFromIso(p.data),
+        y:         p.casos_est != null ? Math.round(p.casos_est) : null,
+        color:     NIVEL_HEX[p.nivel ?? 0],
+        nivel:     p.nivel ?? 0,
+        se:        p.se,
+        rt:        p.rt,
+        p_inc100k: p.p_inc100k,
+      }));
+
+      // Série de linha: casos confirmados
+      const casosData: [number, number | null][] = pts.map(p => [
+        tsFromIso(p.data), p.casos,
+      ]);
+
+      // Série Rt (eixo direito)
+      const rtData: [number, number][] = pts
+        .filter(p => p.rt != null)
+        .map(p => [tsFromIso(p.data), p.rt!]);
+
+      const rtMax = rtData.length
+        ? Math.max(3, ...rtData.map(p => p[1])) * 1.15
+        : 3;
 
       this.chart?.destroy();
-      this.chart = Highcharts.chart(host, {
-        chart: { backgroundColor: 'transparent', style: { fontFamily: 'Inter, sans-serif' } },
-        title: { text: undefined },
-        credits: { enabled: false },
-        legend: { itemStyle: { color: '#93a1bd' }, itemHoverStyle: { color: '#e6ecf7' } },
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.chart = (Highcharts as any).stockChart(host, {
+        chart: {
+          backgroundColor: 'transparent',
+          style: { fontFamily: 'Inter, sans-serif' },
+          zooming: {
+            type: 'x',
+            mouseWheel: { enabled: true },
+          },
+          panning:  { enabled: true, type: 'x' },
+          panKey:   'shift',
+          resetZoomButton: {
+            theme: {
+              fill:            '#111d33',
+              stroke:          '#1c2b46',
+              'stroke-width':  1,
+              r:               6,
+              style:           { color: '#7080a0', fontSize: '11px', fontWeight: '600' },
+              states: { hover: { fill: '#162039', style: { color: '#e4eaf6' } } },
+            },
+            position: { align: 'right', verticalAlign: 'top', x: -4, y: 4 },
+          },
+          marginTop: 4,
+          spacing: [4, 8, 4, 8],
+        },
+
+        title:    { text: undefined },
+        subtitle: { text: undefined },
+        credits:  { enabled: false },
+
+        // ── Range selector ──────────────────────────────────
+        rangeSelector: {
+          enabled:      true,
+          inputEnabled: false,
+          buttonSpacing: 4,
+          buttons: [
+            { type: 'month', count: 3,  text: '3M',   title: 'Últimos 3 meses' },
+            { type: 'month', count: 6,  text: '6M',   title: 'Últimos 6 meses' },
+            { type: 'year',  count: 1,  text: '1 ano', title: 'Último ano' },
+            { type: 'all',              text: 'Tudo',  title: 'Todo o histórico' },
+          ],
+          selected: 2, // "1 ano" como padrão — contexto epidemiológico relevante
+          buttonTheme: {
+            fill:           '#111d33',
+            stroke:         '#1c2b46',
+            'stroke-width': 1,
+            r:              6,
+            style:          { color: '#7080a0', fontWeight: '600', fontSize: '11px' },
+            padding: 5,
+            states: {
+              hover:  { fill: '#162039', style: { color: '#e4eaf6' } },
+              select: {
+                fill:   '#38bdf8',
+                stroke: '#38bdf8',
+                style:  { color: '#03090f', fontWeight: '700' },
+              },
+            },
+          },
+          labelStyle: { display: 'none' },
+        },
+
+        // ── Navigator (mini-mapa temporal) ──────────────────
+        navigator: {
+          enabled: true,
+          height:  34,
+          margin:  10,
+          maskFill:     'rgba(56,189,248,0.07)',
+          outlineColor: '#1c2b46',
+          outlineWidth: 1,
+          handles: {
+            backgroundColor: '#1c2b46',
+            borderColor:     '#38bdf8',
+          },
+          xAxis: {
+            labels: { style: { color: '#3d5070', fontSize: '10px' } },
+          },
+          series: {
+            type:      'column',
+            color:     'rgba(56,189,248,0.5)',
+            fillColor: 'rgba(56,189,248,0.05)',
+            lineWidth: 0,
+          },
+        },
+
+        scrollbar: { enabled: false },
+
+        // ── Eixo X — datas naturais ──────────────────────────
         xAxis: {
-          categories: categorias,
-          labels: { style: { color: '#93a1bd' } },
-          tickInterval: Math.ceil(categorias.length / 12),
-          lineColor: '#243150',
+          type: 'datetime',
+          dateTimeLabelFormats: {
+            day:   '%e %b',
+            week:  '%e %b',
+            month: '%b %Y',
+            year:  '%Y',
+          },
+          crosshair: {
+            color:     'rgba(56,189,248,0.2)',
+            dashStyle: 'Dash' as Highcharts.DashStyleValue,
+            width:     1,
+          },
+          labels:       { style: { color: '#7080a0', fontSize: '11px' } },
+          lineColor:    '#1c2b46',
+          tickColor:    '#1c2b46',
+          gridLineColor:'transparent',
         },
-        yAxis: {
-          title: { text: 'Casos', style: { color: '#93a1bd' } },
-          labels: { style: { color: '#93a1bd' } },
-          gridLineColor: '#1c2841',
-        },
-        tooltip: { shared: true },
-        plotOptions: { column: { borderWidth: 0 } },
-        series: [
+
+        // ── Eixos Y ──────────────────────────────────────────
+        yAxis: [
           {
-            type: 'column',
-            name: 'Casos estimados',
-            data: casosEst.map((y, i) => ({ y, color: cores[i] })),
+            // Esquerda: casos
+            title:     { text: null },
+            labels:    { style: { color: '#7080a0', fontSize: '11px' }, align: 'right', x: -4 },
+            gridLineColor:     '#131e34',
+            gridLineDashStyle: 'Dot' as Highcharts.DashStyleValue,
+            opposite:  false,
           },
           {
-            type: 'line',
-            name: 'Casos confirmados',
-            color: '#38bdf8',
-            marker: { enabled: false },
-            data: casos,
+            // Direita: Rt
+            title:  { text: null },
+            labels: {
+              style:     { color: '#7080a0', fontSize: '10px' },
+              formatter: function(this: Highcharts.AxisLabelsFormatterContextObject) {
+                return (this.value as number).toFixed(1);
+              },
+            },
+            gridLineColor: 'transparent',
+            opposite:      true,
+            min: 0,
+            max: rtMax,
+            plotLines: [{
+              value:     1,
+              color:     'rgba(234,179,8,0.4)',
+              dashStyle: 'Dot' as Highcharts.DashStyleValue,
+              width:     1.5,
+              label: {
+                text:  'Rt = 1',
+                align: 'right',
+                style: { color: '#eab308', fontSize: '10px', fontWeight: '600' },
+                x: -4,
+                y: -4,
+              },
+              zIndex: 4,
+            }],
           },
         ],
-      });
+
+        // ── Legenda ──────────────────────────────────────────
+        legend: {
+          enabled:       true,
+          align:         'left',
+          verticalAlign: 'top',
+          floating:      false,
+          symbolRadius:  3,
+          itemStyle:     { color: '#7080a0', fontSize: '11px', fontWeight: '600' },
+          itemHoverStyle:{ color: '#e4eaf6' },
+          margin: 12,
+        },
+
+        // ── Tooltip rico ─────────────────────────────────────
+        tooltip: {
+          shared:          true,
+          useHTML:         true,
+          backgroundColor: 'rgba(7,13,26,0.97)',
+          borderColor:     '#1c2b46',
+          borderWidth:     1,
+          borderRadius:    10,
+          padding:         0,
+          shadow: { color: 'rgba(0,0,0,0.5)', offsetX: 0, offsetY: 4, opacity: 0.4, width: 14 },
+          style: { color: '#e4eaf6', fontSize: '12px' },
+          formatter: function(this: Highcharts.TooltipFormatterContextObject): string {
+            const points  = (this as any).points as Highcharts.TooltipFormatterContextObject[];
+            if (!points?.length) return '';
+
+            const estPt   = points.find(p => p.series.name === 'Casos est.')?.point as any;
+            const nivel   = estPt?.nivel  ?? 0;
+            const hex     = NIVEL_HEX[nivel]   ?? '#475569';
+            const lvLabel = NIVEL_LABEL[nivel]  ?? 'Sem dados';
+            const se      = estPt?.se ?? '';
+            const seStr   = se ? `SE&nbsp;${String(se).slice(4)}&nbsp;·&nbsp;` : '';
+            const dateStr = fmtPtBr((this as any).x as number);
+
+            const linhas = points.map(p => {
+              if (p.y == null) return '';
+              const isRt    = p.series.name === 'Rt';
+              const valFmt  = isRt
+                ? p.y.toFixed(2)
+                : p.y.toLocaleString('pt-BR');
+              const dot = `<span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${p.color};flex-shrink:0"></span>`;
+              return `
+                <div style="display:flex;align-items:center;gap:8px;padding:2px 0">
+                  ${dot}
+                  <span style="flex:1;color:#9aa8c0">${p.series.name}</span>
+                  <strong style="color:#e4eaf6;font-variant-numeric:tabular-nums">${valFmt}</strong>
+                </div>`;
+            }).filter(Boolean).join('');
+
+            const inc = estPt?.p_inc100k != null
+              ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;color:#7080a0;font-size:11px">
+                   <span>Incidência / 100k hab.</span>
+                   <span style="color:#9aa8c0;font-variant-numeric:tabular-nums">${(estPt.p_inc100k as number).toFixed(1)}</span>
+                 </div>` : '';
+
+            return `
+              <div style="min-width:220px;padding:12px 14px;font-family:Inter,sans-serif">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+                  <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:${hex}1a;color:${hex};letter-spacing:0.03em">${lvLabel}</span>
+                  <span style="font-size:11px;color:#7080a0">${seStr}${dateStr}</span>
+                </div>
+                <div style="border-top:1px solid #1c2b46;padding-top:8px">
+                  ${linhas}
+                  ${inc ? `<div style="border-top:1px solid #131e34;margin-top:6px;padding-top:6px">${inc}</div>` : ''}
+                </div>
+              </div>`;
+          },
+        },
+
+        // ── Opções de série ──────────────────────────────────
+        plotOptions: {
+          column: {
+            borderWidth: 0,
+            borderRadius: 2,
+            maxPointWidth: 14,
+            groupPadding: 0.05,
+          },
+          line: {
+            marker: {
+              enabled: false,
+              states: { hover: { enabled: true, radius: 4, lineWidth: 0 } },
+            },
+          },
+          series: {
+            animation: { duration: 350 },
+            states: { inactive: { opacity: 0.6 } },
+          },
+        },
+
+        // ── Séries ───────────────────────────────────────────
+        series: [
+          {
+            type:  'column',
+            name:  'Casos est.',
+            data:  casosEstData,
+            yAxis: 0,
+            zIndex: 2,
+          },
+          {
+            type:      'line',
+            name:      'Confirmados',
+            data:      casosData,
+            color:     '#38bdf8',
+            lineWidth: 1.5,
+            opacity:   0.75,
+            yAxis:     0,
+            zIndex:    3,
+          },
+          {
+            type:      'line',
+            name:      'Rt',
+            data:      rtData,
+            color:     '#eab308',
+            lineWidth: 1.5,
+            dashStyle: 'ShortDash' as Highcharts.DashStyleValue,
+            yAxis:     1,
+            zIndex:    4,
+          },
+        ],
+      } as unknown as Highcharts.Options);
     });
   }
 }
