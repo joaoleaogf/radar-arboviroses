@@ -2,14 +2,19 @@
   "id": "radarwf2",
   "name": "WF2 - ETL InfoDengue",
   "active": true,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "nodes": [
     {
       "id": "wf2-manual",
       "name": "Executar manualmente",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [0, 200],
+      "position": [
+        0,
+        200
+      ],
       "parameters": {}
     },
     {
@@ -17,11 +22,17 @@
       "name": "Toda terça 08h",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "cronExpression", "expression": "0 8 * * 2" }
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 2"
+            }
           ]
         }
       }
@@ -31,9 +42,15 @@
       "name": "Registrar execução",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [240, 100],
+      "position": [
+        240,
+        100
+      ],
       "credentials": {
-        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+        "postgres": {
+          "id": "radarpg01",
+          "name": "Radar Postgres"
+        }
       },
       "parameters": {
         "operation": "executeQuery",
@@ -46,9 +63,15 @@
       "name": "Buscar municípios",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [480, 100],
+      "position": [
+        480,
+        100
+      ],
       "credentials": {
-        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+        "postgres": {
+          "id": "radarpg01",
+          "name": "Radar Postgres"
+        }
       },
       "parameters": {
         "operation": "executeQuery",
@@ -61,7 +84,10 @@
       "name": "Montar requisições",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 100],
+      "position": [
+        720,
+        100
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// Janela fixa desde 2024: o upsert é idempotente, então toda execução\n// também corrige retroativamente revisões do modelo InfoDengue.\nconst eyEnd = new Date().getFullYear();\nconst reqs = [];\nfor (const item of items) {\n  for (const doenca of ['dengue', 'chikungunya']) {\n    reqs.push({ json: { geocode: item.json.geocode, doenca, eyStart: 2024, eyEnd } });\n  }\n}\nreturn reqs;"
@@ -72,7 +98,10 @@
       "name": "Lotes",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [960, 100],
+      "position": [
+        960,
+        100
+      ],
       "parameters": {
         "batchSize": 1,
         "options": {}
@@ -83,7 +112,10 @@
       "name": "InfoDengue",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 200],
+      "position": [
+        1200,
+        200
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
@@ -94,7 +126,10 @@
         "options": {
           "timeout": 30000,
           "batching": {
-            "batch": { "batchSize": 5, "batchInterval": 1000 }
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1000
+            }
           }
         }
       }
@@ -104,7 +139,10 @@
       "name": "Normalizar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1440, 200],
+      "position": [
+        1440,
+        200
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// batchSize = 1 no nó Lotes: todos os itens (semanas) deste lote pertencem\n// ao mesmo município × doença, lido direto do lote atual (sem pairedItem).\nconst src = $('Lotes').first().json;\nconst rows = [];\nfor (const it of items) {\n  const j = it.json;\n  if (!j || j.SE === undefined || j.SE === null) continue;\n  rows.push({\n    geocode: src.geocode,\n    doenca: src.doenca,\n    se: j.SE,\n    data_inise: new Date(j.data_iniSE).toISOString().slice(0, 10),\n    casos: j.casos ?? null,\n    casos_est: j.casos_est ?? null,\n    nivel: j.nivel ?? null,\n    rt: j.Rt ?? null,\n    p_inc100k: j.p_inc100k ?? null,\n    tempmed: j.tempmed != null ? Number(j.tempmed) : null,\n    umidmed: j.umidmed != null ? Number(j.umidmed) : null,\n    notif_accum_year: j.notif_accum_year ?? null,\n    pop: j.pop != null ? parseInt(j.pop, 10) : null,\n  });\n}\nconst pops = [...new Map(rows.filter((r) => r.pop).map((r) => [r.geocode, r.pop])).entries()].map(\n  ([geocode, pop]) => ({ geocode, pop })\n);\nreturn [{ json: { rows: JSON.stringify(rows), pops: JSON.stringify(pops), count: rows.length } }];"
@@ -115,9 +153,15 @@
       "name": "Gravar casos",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1680, 200],
+      "position": [
+        1680,
+        200
+      ],
       "credentials": {
-        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+        "postgres": {
+          "id": "radarpg01",
+          "name": "Radar Postgres"
+        }
       },
       "parameters": {
         "operation": "executeQuery",
@@ -132,9 +176,15 @@
       "name": "Atualizar população",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1920, 200],
+      "position": [
+        1920,
+        200
+      ],
       "credentials": {
-        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+        "postgres": {
+          "id": "radarpg01",
+          "name": "Radar Postgres"
+        }
       },
       "parameters": {
         "operation": "executeQuery",
@@ -149,9 +199,15 @@
       "name": "Finalizar execução",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1200, 0],
+      "position": [
+        1200,
+        0
+      ],
       "credentials": {
-        "postgres": { "id": "radarpg01", "name": "Radar Postgres" }
+        "postgres": {
+          "id": "radarpg01",
+          "name": "Radar Postgres"
+        }
       },
       "parameters": {
         "operation": "executeQuery",
@@ -160,41 +216,157 @@
           "queryReplacement": "={{ $('Registrar execução').first().json.id }}"
         }
       }
+    },
+    {
+      "id": "wf2-refresh-matview",
+      "name": "Refresh situacao_atual",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1400,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "radarpg01",
+          "name": "Radar Postgres"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "REFRESH MATERIALIZED VIEW situacao_atual;",
+        "options": {}
+      }
     }
   ],
   "connections": {
     "Toda terça 08h": {
-      "main": [[{ "node": "Registrar execução", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Registrar execução",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Executar manualmente": {
-      "main": [[{ "node": "Registrar execução", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Registrar execução",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Registrar execução": {
-      "main": [[{ "node": "Buscar municípios", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Buscar municípios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Buscar municípios": {
-      "main": [[{ "node": "Montar requisições", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Montar requisições",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Montar requisições": {
-      "main": [[{ "node": "Lotes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Lotes": {
       "main": [
-        [{ "node": "Finalizar execução", "type": "main", "index": 0 }],
-        [{ "node": "InfoDengue", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Finalizar execução",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "InfoDengue",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "InfoDengue": {
-      "main": [[{ "node": "Normalizar", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalizar": {
-      "main": [[{ "node": "Gravar casos", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gravar casos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gravar casos": {
-      "main": [[{ "node": "Atualizar população", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Atualizar população",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Atualizar população": {
-      "main": [[{ "node": "Lotes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalizar execução": {
+      "main": [
+        [
+          {
+            "node": "Refresh situacao_atual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   }
 }

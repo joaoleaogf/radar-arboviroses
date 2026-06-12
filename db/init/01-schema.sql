@@ -55,11 +55,18 @@ CREATE TABLE alerta_enviado (
   PRIMARY KEY (geocode, doenca, se)
 );
 
--- View usada pela API (WF4) e pelo agente (WF5): última semana disponível por município/doença
-CREATE VIEW situacao_atual AS
+CREATE INDEX IF NOT EXISTS idx_caso_semana_geocode_doenca_se
+  ON caso_semana (geocode, doenca, se DESC);
+
+-- Materialized view: última semana disponível por município/doença (cached)
+CREATE MATERIALIZED VIEW situacao_atual AS
 SELECT DISTINCT ON (c.geocode, c.doenca)
        c.geocode, m.nome, m.pop, c.doenca, c.se, c.data_inise,
        c.casos, c.casos_est, c.nivel, c.rt, c.p_inc100k
 FROM caso_semana c
 JOIN municipio m USING (geocode)
 ORDER BY c.geocode, c.doenca, c.se DESC;
+
+CREATE INDEX ON situacao_atual (doenca, geocode);
+CREATE INDEX ON situacao_atual (geocode);
+CREATE INDEX ON situacao_atual (doenca, nivel);
