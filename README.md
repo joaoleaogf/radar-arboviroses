@@ -146,6 +146,13 @@ openssl rand -hex 32   # gere um valor para cada segredo
 3. `docker compose up -d auth-api`.
 4. Rotação do `JWT_SECRET` invalida as sessões ativas — os usuários precisam logar de novo.
 
+### Topologia de produção (2 VMs Oracle free)
+
+- **VM apps** (152.70.214.49): nginx + auth-api + n8n — domínios api/n8n.joaoleao.fun
+- **VM banco** (136.248.114.235 / interna 10.0.0.169): Postgres/PostGIS na porta 5433
+
+As VMs se falam pela rede privada da VCN (10.0.0.0/24). A Security List precisa de uma regra de ingress TCP 5433 com origem 10.0.0.0/24. O `.env` da VM de apps define `DB_HOST`/`DB_PORT`; sem essas vars o compose usa o container local `db` (dev: `docker compose --profile db up -d` — sem o `depends_on`, o n8n pode reiniciar 1–2× até o Postgres ficar pronto).
+
 ### Migrations em banco existente
 
 Os scripts `db/init/0N-*.sql` só rodam automaticamente em instalação nova (volume vazio). Em banco já provisionado, aplique manualmente — todos são idempotentes (`IF NOT EXISTS`):
