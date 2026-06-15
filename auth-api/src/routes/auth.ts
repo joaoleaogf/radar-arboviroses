@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { sendWelcomeEmail } from '../lib/email.js';
@@ -11,12 +11,53 @@ const COOKIE_OPTS = {
   maxAge: 604800, // 7 dias em segundos
 };
 
+// Anti brute-force nos endpoints de credencial
+const AUTH_RATE_LIMIT = { rateLimit: { max: 5, timeWindow: '1 minute' } };
+
+interface RegisterBody { name: string; email: string; password: string }
+interface LoginBody    { email: string; password: string }
+interface UpdateMeBody { name?: string; phone?: string }
+
+const registerSchema = {
+  body: {
+    type: 'object',
+    required: ['name', 'email', 'password'],
+    additionalProperties: false,
+    properties: {
+      name:     { type: 'string', minLength: 1, maxLength: 120 },
+      email:    { type: 'string', format: 'email', maxLength: 254 },
+      password: { type: 'string', minLength: 8, maxLength: 72 }, // 72 = limite do bcrypt
+    },
+  },
+};
+
+const loginSchema = {
+  body: {
+    type: 'object',
+    required: ['email', 'password'],
+    additionalProperties: false,
+    properties: {
+      email:    { type: 'string', minLength: 1, maxLength: 254 },
+      password: { type: 'string', minLength: 1, maxLength: 72 },
+    },
+  },
+};
+
+const updateMeSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      name:  { type: 'string', minLength: 1, maxLength: 120 },
+      phone: { type: 'string', maxLength: 20 },
+    },
+  },
+};
+
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
-  fastify.post('/register', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { name, email, password } = req.body as { name: string; email: string; password: string };
-    if (!name || !email || !password) return reply.code(400).send({ error: 'Campos obrigatórios' });
-    if (password.length < 8) return reply.code(400).send({ error: 'Senha muito curta (mín. 8 chars)' });
+  fastify.post<{ Body: RegisterBody }>('/register', { schema: registerSchema, config: AUTH_RATE_LIMIT }, async (req, reply) => {
+    const { name, email, password } = req.body;
 
     const exists = await pool.query('SELECT id FROM app_user WHERE email = $1', [email]);
     if (exists.rowCount) return reply.code(409).send({ error: 'E-mail já cadastrado' });
@@ -31,15 +72,16 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const user = rows[0];
     const token = fastify.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '7d' });
 
-    if (process.env.RESEND_API_KEY) sendWelcomeEmail(email, name).catch(() => {});
+    if (process.env.RESEND_API_KEY) {
+      sendWelcomeEmail(email, name).catch((err) => req.log.error({ err }, 'falha ao enviar e-mail de boas-vindas'));
+    }
 
     reply.setCookie('radar_session', token, COOKIE_OPTS);
     return reply.send({ token, user });
   });
 
-  fastify.post('/login', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { email, password } = req.body as { email: string; password: string };
-    if (!email || !password) return reply.code(400).send({ error: 'Campos obrigatórios' });
+  fastify.post<{ Body: LoginBody }>('/login', { schema: loginSchema, config: AUTH_RATE_LIMIT }, async (req, reply) => {
+    const { email, password } = req.body;
 
     const { rows } = await pool.query(
       'SELECT id, email, name, password_hash, role, email_verified FROM app_user WHERE email = $1',
@@ -59,7 +101,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
   });
 
-  fastify.post('/logout', async (_req: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/logout', async (_req, reply) => {
     reply.clearCookie('radar_session', { path: '/' });
     return reply.send({ ok: true });
   });
@@ -74,9 +116,9 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     return rows[0];
   });
 
-  fastify.put('/me', { preHandler: [fastify.authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
+  fastify.put<{ Body: UpdateMeBody }>('/me', { preHandler: [fastify.authenticate], schema: updateMeSchema }, async (req, reply) => {
     const payload = req.user as { sub: string };
-    const { name, phone } = req.body as { name?: string; phone?: string };
+    const { name, phone } = req.body;
     if (!name && phone === undefined) return reply.code(400).send({ error: 'Nenhum campo para atualizar' });
 
     const sets: string[] = [];

@@ -15,7 +15,8 @@
   /* Text */
   --text:    #dde6f5;
   --muted:   #6b7f9e;
-  --muted-2: #374f6b;
+  /* --muted-2 clareado de #374f6b → ~4:1 de contraste (WCAG AA p/ texto grande) */
+  --muted-2: #5e7a9e;
 
   /* Brand — cyan "radar" */
   --brand:      #22d3ee;

@@ -1,31 +1,26 @@
+import { timingSafeEqual } from 'node:crypto';
 import type { FastifyPluginAsync } from 'fastify';
 import { pool } from '../db.js';
 import { sendAlertEmail } from '../lib/email.js';
+import { getAlertJobs } from '../lib/alerts.js';
+
+function validSecret(header: unknown): boolean {
+  const secret = process.env.INTERNAL_SECRET ?? '';
+  if (typeof header !== 'string' || !secret) return false;
+  const a = Buffer.from(header);
+  const b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 // Chamado pelo n8n (WF5) após cada ETL bem-sucedido
 export const notifyRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/dispatch', async (req, reply) => {
-    // Verifica secret interno
-    const auth = req.headers['x-internal-secret'];
-    if (auth !== process.env.INTERNAL_SECRET) return reply.code(401).send({ error: 'Não autorizado' });
+    if (!validSecret(req.headers['x-internal-secret'])) {
+      return reply.code(401).send({ error: 'Não autorizado' });
+    }
 
-    const { rows: jobs } = await pool.query(`
-      SELECT DISTINCT ON (s.id)
-             s.id AS sub_id, s.user_id, s.doenca, s.nivel_minimo,
-             u.email, u.name,
-             sa.geocode, sa.nome AS municipio, sa.uf, sa.nivel, sa.casos_est, sa.se
-      FROM user_alert_subscription s
-      JOIN app_user u ON u.id = s.user_id
-      JOIN situacao_atual sa
-        ON sa.doenca = s.doenca
-        AND sa.nivel >= s.nivel_minimo
-        AND (s.geocode IS NULL OR s.geocode = sa.geocode)
-        AND (s.uf IS NULL OR s.uf = sa.uf)
-        AND (s.regiao IS NULL OR s.regiao = sa.regiao)
-      WHERE s.ativo = true AND s.canal = 'email'
-      ORDER BY s.id, sa.nivel DESC
-    `);
+    const jobs = await getAlertJobs();
 
     const results = await Promise.allSettled(
       jobs.map(async (j) => {
@@ -46,6 +41,10 @@ export const notifyRoutes: FastifyPluginAsync = async (fastify) => {
         );
       }),
     );
+
+    for (const r of results) {
+      if (r.status === 'rejected') req.log.error({ err: r.reason }, 'falha no envio de alerta');
+    }
 
     const sent  = results.filter(r => r.status === 'fulfilled').length;
     const error = results.filter(r => r.status === 'rejected').length;

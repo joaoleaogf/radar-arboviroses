@@ -113,6 +113,54 @@ radar-arboviroses/
 
 `n8n` · `PostgreSQL/PostGIS` · `Angular 21` · `Leaflet` · `Highcharts` · `Google Gemini (AI Agent)` · `Telegram Bot` · `Docker Compose` · `TypeScript`
 
+## Operações
+
+### Testes e CI
+
+```bash
+cd auth-api
+npm ci
+npm run typecheck   # tsc --noEmit (src + test)
+npm test            # vitest (rotas com pool mockado)
+npm run build       # compila para dist/
+```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda typecheck, testes, build e `npm audit` do auth-api (Node 20) e o build do dashboard (Node 22) em todo push para `main`/`feature/plataforma-saude` e pull request.
+
+### Deploy contínuo (VM Oracle)
+
+Após os testes passarem num push, o job `deploy` conecta na VM (152.70.214.49) via SSH, atualiza a branch `deploy` em `/opt/radar` para o commit pushado e reconstrói o `auth-api`. Em seguida valida `https://api.joaoleao.fun/health`.
+
+Requisito: secret `DEPLOY_SSH_KEY` no repositório (chave privada cujo par público está no `~/.ssh/authorized_keys` do usuário `ubuntu` na VM). Sem o secret, o job é pulado com aviso. O dashboard é publicado automaticamente pelo Cloudflare Pages (integração git própria). Migrations de banco (`db/init/0N-*.sql`) seguem manuais — ver seção acima.
+
+### Rotação de segredos (JWT_SECRET / INTERNAL_SECRET)
+
+O `docker compose up` falha se `JWT_SECRET` ou `INTERNAL_SECRET` estiverem ausentes do `.env` — é proposital (fail-fast, sem defaults previsíveis). Para gerar/rotacionar:
+
+```bash
+openssl rand -hex 32   # gere um valor para cada segredo
+```
+
+1. Edite o `.env` (`/opt/radar-arboviroses/.env` na VM) com os novos valores.
+2. Se rotacionar o `INTERNAL_SECRET`, atualize **na mesma janela** o header `x-internal-secret` usado pelo n8n (WF5) na chamada a `/notify/dispatch`.
+3. `docker compose up -d auth-api`.
+4. Rotação do `JWT_SECRET` invalida as sessões ativas — os usuários precisam logar de novo.
+
+### Topologia de produção (2 VMs Oracle free)
+
+- **VM apps** (152.70.214.49): nginx + auth-api + n8n — domínios api/n8n.joaoleao.fun
+- **VM banco** (136.248.114.235 / interna 10.0.0.169): Postgres/PostGIS na porta 5433
+
+As VMs se falam pela rede privada da VCN (10.0.0.0/24). A Security List precisa de uma regra de ingress TCP 5433 com origem 10.0.0.0/24. O `.env` da VM de apps define `DB_HOST`/`DB_PORT`; sem essas vars o compose usa o container local `db` (dev: `docker compose --profile db up -d` — sem o `depends_on`, o n8n pode reiniciar 1–2× até o Postgres ficar pronto).
+
+### Migrations em banco existente
+
+Os scripts `db/init/0N-*.sql` só rodam automaticamente em instalação nova (volume vazio). Em banco já provisionado, aplique manualmente — todos são idempotentes (`IF NOT EXISTS`):
+
+```bash
+docker exec -i radar-db psql -U radar -d radar < db/init/05-indexes.sql
+```
+
 ## Roadmap
 
 - [ ] Deploy em VPS (n8n + Postgres atrás de HTTPS) e dashboard na Vercel

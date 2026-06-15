@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { environment } from '../../environments/environment';
 import { NIVEL_HEX, NIVEL_LABEL } from '../nivel';
+import { REGIOES, UFS_POR_REGIAO } from '../core/geo';
 
 interface Row {
   geocode: number; nome: string; uf: string; regiao: string; pop: number | null;
@@ -12,15 +13,6 @@ interface Row {
 }
 
 type SortKey = 'nome' | 'uf' | 'regiao' | 'nivel' | 'casos_est' | 'p_inc100k' | 'rt';
-
-const REGIOES = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
-const UFS_POR_REGIAO: Record<string, string[]> = {
-  'Norte':        ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'],
-  'Nordeste':     ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
-  'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
-  'Sudeste':      ['ES', 'MG', 'RJ', 'SP'],
-  'Sul':          ['PR', 'RS', 'SC'],
-};
 
 @Component({
   selector: 'app-relatorios',
@@ -106,6 +98,18 @@ export class Relatorios implements OnInit {
 
   protected exportCsv(): void {
     const rows = this.filtradas();
+    const seMax = rows.reduce((m, r) => Math.max(m, r.se ?? 0), 0);
+
+    // Metadados de cabeçalho — rastreabilidade da extração.
+    const meta = [
+      `# Radar de Arboviroses — extração de dados`,
+      `# Doença: ${this.doenca()}`,
+      `# Filtro região: ${this.regiaoFiltro() || 'todas'} · UF: ${this.ufFiltro() || 'todas'} · nível: ${this.nivelFiltro() || 'todos'}`,
+      `# Última SE no recorte: ${seMax ? `${String(seMax).slice(4)}/${String(seMax).slice(0, 4)}` : '—'}`,
+      `# Exportado em: ${new Date().toLocaleString('pt-BR')}`,
+      `# Fonte: InfoDengue (Fiocruz/FGV) e IBGE`,
+      '',
+    ];
     const header = ['Geocode', 'Município', 'UF', 'Região', 'Pop.', 'Nível', 'Casos Est.', 'Inc/100k', 'Rt', 'SE'];
     const lines = rows.map(r => [
       r.geocode, r.nome, r.uf, r.regiao, r.pop ?? '',
@@ -113,7 +117,7 @@ export class Relatorios implements OnInit {
       r.p_inc100k?.toFixed(1) ?? '', r.rt?.toFixed(2) ?? '', r.se ?? '',
     ].join(','));
     const bom  = '﻿';
-    const blob = new Blob([bom + header.join(',') + '\n' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([bom + meta.join('\n') + header.join(',') + '\n' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `radar_${this.doenca()}_${new Date().toISOString().slice(0, 10)}.csv`;

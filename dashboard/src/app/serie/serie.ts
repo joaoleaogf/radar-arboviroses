@@ -11,24 +11,8 @@ import {
 } from '@angular/core';
 import Highcharts from 'highcharts/highstock';
 import { Doenca, RadarService } from '../radar.service';
-import { NIVEL_HEX, NIVEL_LABEL } from '../nivel';
-
-const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-
-function tsFromIso(iso: string): number {
-  // Fixa meio-dia UTC para evitar erros de fuso
-  return Date.UTC(
-    +iso.slice(0, 4),
-    +iso.slice(5, 7) - 1,
-    +iso.slice(8, 10),
-    12, 0, 0,
-  );
-}
-
-function fmtPtBr(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-}
+import { NIVEL_HEX, NIVEL_LABEL, RT_LABEL, interpretarRt } from '../nivel';
+import { fmtPtBr, tsFromIso } from '../core/se';
 
 @Component({
   selector: 'app-serie',
@@ -107,6 +91,8 @@ export class Serie implements AfterViewInit, OnDestroy {
   readonly geocode = input<number | null>(null);
   readonly nome    = input<string>('');
   readonly doenca  = input.required<Doenca>();
+  /** Métrica do eixo principal: contagem de casos ou incidência por 100k hab. */
+  readonly metrica = input<'casos' | 'incidencia'>('casos');
 
   private chart?: Highcharts.Chart;
 
@@ -114,6 +100,7 @@ export class Serie implements AfterViewInit, OnDestroy {
     effect(() => {
       const geocode = this.geocode();
       const doenca  = this.doenca();
+      this.metrica(); // recarrega ao alternar a métrica
       if (geocode) this.carregar(geocode, doenca);
     });
   }
@@ -133,11 +120,15 @@ export class Serie implements AfterViewInit, OnDestroy {
       if (!host) return;
 
       const pts = res.serie;
+      const porIncidencia = this.metrica() === 'incidencia';
 
-      // Série de barras: casos estimados coloridos por nível de alerta
+      // Série de barras principal, colorida por nível de alerta.
+      // Em modo incidência mostra casos/100k hab (comparável entre municípios).
       const casosEstData = pts.map(p => ({
         x:         tsFromIso(p.data),
-        y:         p.casos_est != null ? Math.round(p.casos_est) : null,
+        y:         porIncidencia
+                     ? (p.p_inc100k != null ? Math.round(p.p_inc100k * 10) / 10 : null)
+                     : (p.casos_est != null ? Math.round(p.casos_est) : null),
         color:     NIVEL_HEX[p.nivel ?? 0],
         nivel:     p.nivel ?? 0,
         se:        p.se,
@@ -145,7 +136,7 @@ export class Serie implements AfterViewInit, OnDestroy {
         p_inc100k: p.p_inc100k,
       }));
 
-      // Série de linha: casos confirmados
+      // Série de linha: casos confirmados (oculta no modo incidência, escala incompatível).
       const casosData: [number, number | null][] = pts.map(p => [
         tsFromIso(p.data), p.casos,
       ]);
@@ -334,7 +325,7 @@ export class Serie implements AfterViewInit, OnDestroy {
             const points  = (this as any).points as Highcharts.TooltipFormatterContextObject[];
             if (!points?.length) return '';
 
-            const estPt   = points.find(p => p.series.name === 'Casos est.')?.point as any;
+            const estPt   = points.find(p => (p.series as any).type === 'column')?.point as any;
             const nivel   = estPt?.nivel  ?? 0;
             const hex     = NIVEL_HEX[nivel]   ?? '#475569';
             const lvLabel = NIVEL_LABEL[nivel]  ?? 'Sem dados';
@@ -357,10 +348,19 @@ export class Serie implements AfterViewInit, OnDestroy {
                 </div>`;
             }).filter(Boolean).join('');
 
-            const inc = estPt?.p_inc100k != null
+            const inc = (!porIncidencia && estPt?.p_inc100k != null)
               ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;color:#7080a0;font-size:11px">
                    <span>Incidência / 100k hab.</span>
                    <span style="color:#9aa8c0;font-variant-numeric:tabular-nums">${(estPt.p_inc100k as number).toFixed(1)}</span>
+                 </div>` : '';
+
+            const rtVal = estPt?.rt as number | null | undefined;
+            const tend  = interpretarRt(rtVal);
+            const rtCor = tend === 'crescimento' ? '#f97316' : tend === 'queda' ? '#10b981' : '#7080a0';
+            const rtInterp = rtVal != null
+              ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px">
+                   <span style="color:#7080a0">${RT_LABEL[tend]}</span>
+                   <span style="color:${rtCor};font-weight:600">Rt ${rtVal.toFixed(2)}</span>
                  </div>` : '';
 
             return `
@@ -371,7 +371,7 @@ export class Serie implements AfterViewInit, OnDestroy {
                 </div>
                 <div style="border-top:1px solid #1c2b46;padding-top:8px">
                   ${linhas}
-                  ${inc ? `<div style="border-top:1px solid #131e34;margin-top:6px;padding-top:6px">${inc}</div>` : ''}
+                  ${(inc || rtInterp) ? `<div style="border-top:1px solid #131e34;margin-top:6px;padding-top:6px">${inc}${rtInterp}</div>` : ''}
                 </div>
               </div>`;
           },
@@ -401,7 +401,7 @@ export class Serie implements AfterViewInit, OnDestroy {
         series: [
           {
             type:  'column',
-            name:  'Casos est.',
+            name:  porIncidencia ? 'Incidência / 100k' : 'Casos est.',
             data:  casosEstData,
             yAxis: 0,
             zIndex: 2,
@@ -415,6 +415,8 @@ export class Serie implements AfterViewInit, OnDestroy {
             opacity:   0.75,
             yAxis:     0,
             zIndex:    3,
+            visible:   !porIncidencia,
+            showInLegend: !porIncidencia,
           },
           {
             type:      'line',

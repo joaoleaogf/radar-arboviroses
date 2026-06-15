@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feature/plataforma-saude]
+  pull_request:
+
+jobs:
+  auth-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auth-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: auth-api/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
+
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  deploy:
+    needs: [auth-api]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency: deploy-oracle  # nunca dois deploys simultâneos na VM
+    env:
+      DEPLOY_HOST: 152.70.214.49
+      DEPLOY_USER: ubuntu
+    steps:
+      - name: Verificar secret de deploy
+        id: guard
+        run: |
+          if [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ]; then
+            echo "::warning::DEPLOY_SSH_KEY não configurado — deploy pulado. Adicione o secret no repositório."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Configurar SSH
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy.key
+          chmod 600 ~/.ssh/deploy.key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Deploy na VM Oracle
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          ssh -i ~/.ssh/deploy.key "$DEPLOY_USER@$DEPLOY_HOST" "
+            set -euo pipefail
+            cd /opt/radar
+            git fetch origin
+            git checkout deploy
+            git reset --hard ${{ github.sha }}
+            sudo docker compose up -d --build auth-api
+          "
+      - name: Health check
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for i in $(seq 1 10); do
+            sleep 6
+            if curl -fsS -m 15 https://api.joaoleao.fun/health | grep -q '"status":"ok"'; then
+              echo "✅ API saudável após deploy"; exit 0
+            fi
+          done
+          echo "::error::API não respondeu saudável após o deploy"; exit 1

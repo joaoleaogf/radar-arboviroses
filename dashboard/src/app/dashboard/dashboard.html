@@ -14,6 +14,13 @@
   </div>
 
   <div class="header-right">
+    @if (resumo()?.ultima_carga) {
+      <span class="freshness" [class.stale]="dadosDesatualizados()" aria-live="polite"
+            [title]="dadosDesatualizados() ? 'Atualização atrasada — verifique o pipeline de ETL' : 'Dados atualizados'">
+        <span class="dot" aria-hidden="true"></span>
+        Atualizado {{ dataCarga() }}
+      </span>
+    }
     @if (resumo()?.ultima_se) {
       <span class="semana-badge">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -75,61 +82,58 @@
   </div>
 </nav>
 
-@if (resumo(); as r) {
+@if (erro()) {
+  <app-error-state mensagem="Não foi possível carregar o resumo epidemiológico." (retentar)="recarregar()" />
+} @else if (carregando() && !resumo()) {
   <section class="cards">
-    <article class="card">
-      <div class="card-top">
-        <span class="rotulo">Municípios monitorados</span>
-        <span class="card-ico ico-map">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/>
-            <path d="M9 4v13M15 7v13"/>
-          </svg>
-        </span>
-      </div>
-      <strong class="valor">{{ r.municipios }}</strong>
-    </article>
+    @for (i of [1,2,3,4]; track i) { <app-skeleton altura="112px" /> }
+  </section>
+} @else if (resumo()?.municipios === 0) {
+  <app-empty-state mensagem="Nenhum município monitorado neste recorte. Ajuste a região ou a UF." />
+} @else if (resumo(); as r) {
+  <section class="cards">
+    <app-kpi-card
+      rotulo="Municípios monitorados"
+      [valor]="(r.municipios | number)!"
+      info="Total de municípios com dados de notificação no recorte geográfico atual.">
+      <svg icon width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/><path d="M9 4v13M15 7v13"/>
+      </svg>
+    </app-kpi-card>
 
-    <article class="card card-alerta" [class.zero]="r.em_alerta === 0">
-      <div class="card-top">
-        <span class="rotulo">Em alerta <span class="chip-abrev">laranja + vermelho</span></span>
-        <span class="card-ico ico-alert">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-        </span>
-      </div>
-      <strong class="valor">{{ r.em_alerta }}</strong>
-    </article>
+    <app-kpi-card
+      rotulo="Em alerta (laranja + vermelho)"
+      [valor]="(r.em_alerta | number)!"
+      [destaque]="r.em_alerta > 0"
+      info="Municípios em nível laranja ou vermelho: transmissão sustentada ou risco de epidemia (metodologia InfoDengue).">
+      <svg icon width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </app-kpi-card>
 
-    <article class="card">
-      <div class="card-top">
-        <span class="rotulo">Casos est. · semana de {{ semana() }}</span>
-        <span class="card-ico ico-chart">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-        </span>
-      </div>
-      <strong class="valor">{{ r.casos_est_ultima_semana | number: '1.0-0' }}</strong>
-    </article>
+    <app-kpi-card
+      [rotulo]="'Casos est. · semana de ' + semana()"
+      [valor]="(r.casos_est_ultima_semana | number: '1.0-0')!"
+      [delta]="deltaCasos()"
+      [sparkline]="sparkCasos()"
+      [aumentoRuim]="true"
+      info="Casos estimados pelo modelo do InfoDengue, que corrige o atraso de notificação. A variação compara com a semana anterior.">
+      <svg icon width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    </app-kpi-card>
 
-    <article class="card">
-      <div class="card-top">
-        <span class="rotulo">Última carga do ETL</span>
-        <span class="card-ico ico-cal">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-        </span>
-      </div>
-      <strong class="valor pequeno">{{ dataCarga() }}</strong>
-    </article>
+    <app-kpi-card
+      rotulo="Última carga do ETL"
+      [valor]="dataCarga()"
+      info="Data da última atualização bem-sucedida dos dados a partir do InfoDengue.">
+      <svg icon width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </app-kpi-card>
   </section>
 }
 
@@ -164,11 +168,18 @@
           <span class="muni">· {{ m.nome }}</span>
         }
       </h2>
+      @if (selecionado()) {
+        <div class="toggle-mapa" role="tablist" aria-label="Métrica da série">
+          <button role="tab" [class.ativo]="metricaSerie() === 'casos'" (click)="metricaSerie.set('casos')">Casos</button>
+          <button role="tab" [class.ativo]="metricaSerie() === 'incidencia'" (click)="metricaSerie.set('incidencia')">Inc./100k</button>
+        </div>
+      }
     </div>
     <app-serie
       [geocode]="selecionado()?.geocode ?? null"
       [nome]="selecionado()?.nome ?? ''"
       [doenca]="doenca()"
+      [metrica]="metricaSerie()"
     />
 
     @if (resumo()?.top_alertas?.length) {
@@ -180,10 +191,10 @@
       </div>
       <ul class="ranking">
         @for (t of resumo()!.top_alertas; track t.geocode) {
-          <li class="ranking-item" (click)="onSelecionarAlerta(t)">
-            <span class="nivel-badge" [style.color]="hex[t.nivel]" [style.background]="hex[t.nivel] + '1a'">
-              {{ label[t.nivel] }}
-            </span>
+          <li class="ranking-item" tabindex="0" role="button"
+              [attr.aria-label]="t.nome + ', nível ' + label[t.nivel] + ', ' + (t.casos_est | number: '1.0-0') + ' casos'"
+              (click)="onSelecionarAlerta(t)" (keydown.enter)="onSelecionarAlerta(t)">
+            <app-nivel-badge [nivel]="t.nivel" />
             <span class="nome">{{ t.nome }}</span>
             <span class="casos-val">{{ t.casos_est | number: '1.0-0' }} <span class="casos-label">casos</span></span>
           </li>
@@ -194,7 +205,8 @@
 </main>
 
 <footer class="rodape">
-  Pipeline orquestrado em <strong>n8n</strong> · dados:
+  <a routerLink="/app/metodologia">Metodologia &amp; fontes</a>
+  · Pipeline orquestrado em <strong>n8n</strong> · dados:
   <a href="https://info.dengue.mat.br" target="_blank" rel="noopener">InfoDengue (Fiocruz/FGV)</a>
   · <a href="https://servicodados.ibge.gov.br" target="_blank" rel="noopener">IBGE</a>
   · <a href="https://github.com/joaoleaogf" target="_blank" rel="noopener">@joaoleaogf</a>

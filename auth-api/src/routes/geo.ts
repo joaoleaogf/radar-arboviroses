@@ -1,10 +1,34 @@
 import type { FastifyInstance } from 'fastify';
 import { pool } from '../db.js';
 
+interface GeoQuery   { doenca: string; uf: string; regiao: string }
+interface SerieQuery { doenca: string; geocode: string }
+
+// regiao não usa enum: os valores vêm do IBGE via WF1
+const geoQuerySchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    doenca: { type: 'string', enum: ['dengue', 'chikungunya'], default: 'dengue' },
+    uf:     { type: 'string', pattern: '^([A-Z]{2}|\\*)$', default: '*' },
+    regiao: { type: 'string', maxLength: 40, default: '*' },
+  },
+};
+
+const serieQuerySchema = {
+  type: 'object',
+  required: ['geocode'],
+  additionalProperties: false,
+  properties: {
+    geocode: { type: 'string', pattern: '^[0-9]{7}$' },
+    doenca:  { type: 'string', enum: ['dengue', 'chikungunya'], default: 'dengue' },
+  },
+};
+
 export async function geoRoutes(app: FastifyInstance) {
   // GeoJSON dos municípios com última situação epidemiológica
-  app.get('/municipios', async (req: any, reply) => {
-    const { doenca = 'dengue', uf = '*', regiao = '*' } = req.query as Record<string, string>;
+  app.get<{ Querystring: GeoQuery }>('/municipios', { schema: { querystring: geoQuerySchema } }, async (req, reply) => {
+    const { doenca, uf, regiao } = req.query;
 
     const { rows } = await pool.query<{ fc: string }>(
       `SELECT jsonb_build_object(
@@ -31,13 +55,22 @@ export async function geoRoutes(app: FastifyInstance) {
   });
 
   // Resumo nacional / filtrado
-  app.get('/resumo', async (req: any, reply) => {
-    const { doenca = 'dengue', uf = '*', regiao = '*' } = req.query as Record<string, string>;
+  app.get<{ Querystring: GeoQuery }>('/resumo', { schema: { querystring: geoQuerySchema } }, async (req, reply) => {
+    const { doenca, uf, regiao } = req.query;
 
     const { rows } = await pool.query<{ payload: string }>(
       `WITH filtro AS (
          SELECT geocode FROM municipio
          WHERE ($2::text = '*' OR uf = $2::text) AND ($3::text = '*' OR regiao = $3::text)
+       ),
+       semanal AS (
+         SELECT c.se, sum(c.casos_est) AS total
+         FROM caso_semana c JOIN filtro f ON f.geocode = c.geocode
+         WHERE c.doenca = $1::text
+         GROUP BY c.se
+       ),
+       recentes AS (
+         SELECT se, total FROM semanal ORDER BY se DESC LIMIT 12
        )
        SELECT jsonb_build_object(
          'doenca', $1::text,
@@ -46,6 +79,10 @@ export async function geoRoutes(app: FastifyInstance) {
          'casos_est_ultima_semana', (SELECT COALESCE(sum(s.casos_est), 0) FROM situacao_atual s JOIN filtro f ON f.geocode = s.geocode WHERE s.doenca = $1::text),
          'ultima_se',               (SELECT max(se) FROM caso_semana WHERE doenca = $1::text),
          'ultima_carga',            (SELECT max(finished) FROM etl_run WHERE status = 'success'),
+         'serie_recente', (
+           SELECT COALESCE(jsonb_agg(jsonb_build_object('se', se, 'casos_est', total) ORDER BY se), '[]'::jsonb)
+           FROM recentes
+         ),
          'top_alertas', (
            SELECT COALESCE(jsonb_agg(t), '[]'::jsonb) FROM (
              SELECT s.geocode, s.nome, s.nivel, s.casos_est, s.rt
@@ -63,9 +100,8 @@ export async function geoRoutes(app: FastifyInstance) {
   });
 
   // Série histórica de um município
-  app.get('/serie', async (req: any, reply) => {
-    const { doenca = 'dengue', geocode } = req.query as Record<string, string>;
-    if (!geocode) return reply.code(400).send({ error: 'geocode obrigatório' });
+  app.get<{ Querystring: SerieQuery }>('/serie', { schema: { querystring: serieQuerySchema } }, async (req, reply) => {
+    const { doenca, geocode } = req.query;
 
     const { rows } = await pool.query<{ payload: string }>(
       `SELECT jsonb_build_object(

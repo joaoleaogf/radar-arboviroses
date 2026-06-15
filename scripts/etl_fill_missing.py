@@ -6,6 +6,8 @@ Usa a mesma API InfoDengue do workflow n8n wf2-etl-infodengue.
 
 import os, sys, time, json, logging
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import psycopg2
 from psycopg2.extras import execute_values
 
@@ -19,6 +21,14 @@ EY_START = 2024
 EY_END   = 2026
 BATCH_SIZE  = 5    # municípios simultâneos
 BATCH_DELAY = 1.2  # segundos entre lotes
+
+# Retry com backoff exponencial (~1.5s, 3s, 6s, 12s) para oscilações da API
+SESSION = requests.Session()
+SESSION.mount('https://', HTTPAdapter(max_retries=Retry(
+    total=4, backoff_factor=1.5,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=frozenset(['GET']),
+)))
 
 
 def get_missing_geocodes(conn):
@@ -41,7 +51,7 @@ def fetch_infodengue(geocode, disease):
         ew_start=1, ew_end=53, ey_start=EY_START, ey_end=EY_END,
     )
     try:
-        r = requests.get(INFODENGUE_URL, params=params, timeout=30)
+        r = SESSION.get(INFODENGUE_URL, params=params, timeout=30)
         r.raise_for_status()
         return r.json()
     except Exception as e:
