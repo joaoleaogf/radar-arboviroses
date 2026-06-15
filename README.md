@@ -1,6 +1,6 @@
-# Radar de Arboviroses — Sul de Minas
+# Radar de Arboviroses — Brasil
 
-> Pipeline de dados **orquestrado em n8n** que monitora **dengue e chikungunya** nos municípios da mesorregião Sul/Sudoeste de Minas: coleta semanal do InfoDengue, mapa de alerta interativo, alertas no Telegram e um **agente de IA** que responde sobre os dados em linguagem natural.
+> Pipeline de dados **orquestrado em n8n** que monitora **dengue e chikungunya** nos municípios de **todo o Brasil**: coleta semanal do InfoDengue, dashboard com mapa de alerta interativo e séries históricas, alertas por e-mail (contas de usuário) e no Telegram, e um **agente de IA** que responde sobre os dados em linguagem natural.
 
 ![n8n](https://img.shields.io/badge/n8n-orquestração-EA4B71?logo=n8n&logoColor=white)
 ![PostGIS](https://img.shields.io/badge/PostGIS-16--3.4-336791?logo=postgresql&logoColor=white)
@@ -17,9 +17,10 @@
 
 Um único `docker compose up` sobe **n8n + PostGIS**. O n8n é o protagonista: ele agenda, coleta, trata, alerta, serve a API e conversa. O dashboard Angular e o bot do Telegram são só as pontas visíveis.
 
-- 🗺️ **Mapa coroplético** (Leaflet) dos ~146 municípios do Sul de Minas, colorido pelo nível de alerta do InfoDengue (verde → vermelho).
-- 📈 **Série histórica** por município (Highcharts) ao clicar no mapa.
-- 🔔 **Alertas no Telegram** quando um município entra em nível laranja/vermelho (com deduplicação).
+- 🗺️ **Mapa coroplético** (Leaflet) dos municípios de todo o Brasil, navegável por região → UF e colorido pelo nível de alerta do InfoDengue (verde → vermelho) ou por incidência/100k.
+- 📈 **Série histórica** por município (Highcharts) ao clicar no mapa, com Rt, casos estimados/confirmados e perfil de risco do recorte.
+- 🌗 **Dashboard Angular** com tema claro/escuro, layout responsivo e visões compartilháveis por URL.
+- 🔔 **Alertas por e-mail** para usuários inscritos e **no Telegram** quando um município entra em nível laranja/vermelho (com deduplicação).
 - 🤖 **Agente de IA** (Gemini) no Telegram que responde perguntas como *"como está a dengue em Itajubá?"* consultando o banco via ferramentas SQL parametrizadas.
 - ♻️ ETL **idempotente** (upsert por semana epidemiológica), com log de execução, throttle e retry.
 
@@ -40,7 +41,7 @@ Um único `docker compose up` sobe **n8n + PostGIS**. O n8n é o protagonista: e
 
 | Workflow | Gatilho | O que faz |
 |---|---|---|
-| **WF1** `sync-municipios` | manual · mensal | Baixa a lista de municípios de MG (IBGE), filtra a mesorregião Sul/Sudoeste, busca a malha GeoJSON e faz upsert das geometrias no PostGIS. |
+| **WF1** `sync-municipios` | manual · mensal | Percorre as 27 UFs (IBGE), baixa a lista de municípios e a malha GeoJSON de cada estado e faz upsert das geometrias (com UF/região) no PostGIS. |
 | **WF2** `etl-infodengue` | manual · terça 08h | Para cada município × {dengue, chikungunya}, coleta do InfoDengue desde 2024, normaliza e faz upsert em `caso_semana`. Throttle ~5 req/s, retry com backoff, log em `etl_run`. |
 | **WF3** `alertas` | terça 09h | Notifica no Telegram municípios que entraram em nível ≥ 3 e ainda não foram alertados (dedupe em `alerta_enviado`). |
 | **WF4** `api` | webhooks GET | Serve a API do dashboard: `/municipios` (GeoJSON), `/serie`, `/resumo`. |
@@ -76,7 +77,7 @@ Abra `http://localhost:5678`, **crie a conta owner** na tela de primeiro acesso,
 
 No n8n, execute manualmente, nesta ordem:
 
-1. **WF1 — Sync Municípios** → popula `municipio` com geometrias (~146 linhas).
+1. **WF1 — Sync Municípios** → popula `municipio` com as geometrias dos municípios das 27 UFs (IBGE).
 2. **WF2 — ETL InfoDengue** → popula `caso_semana` (backfill desde 2024; leva alguns minutos).
 
 ### 4. Subir o dashboard
@@ -103,15 +104,16 @@ npm start                   # http://localhost:4200
 ```
 radar-arboviroses/
 ├── docker-compose.yml        # n8n + postgis
-├── db/init/01-schema.sql      # schema PostGIS (municipio, caso_semana, etl_run, alerta_enviado, view situacao_atual)
+├── db/init/*.sql              # schema PostGIS + migrations (municipio, caso_semana, etl_run, alerta_enviado, usuários/inscrições)
 ├── n8n/workflows/*.json       # os 5 workflows, versionados
 ├── scripts/setup.sh           # import automatizado de credenciais + workflows
-└── dashboard/                 # Angular 21 (standalone, signals, zoneless) + Leaflet + Highcharts
+├── auth-api/                  # API de contas, inscrições e disparo de alertas por e-mail (Node + Fastify, testes Vitest)
+└── dashboard/                 # Angular 21 (standalone, signals, zoneless) + Leaflet + Highcharts · tema claro/escuro
 ```
 
 ## Stack
 
-`n8n` · `PostgreSQL/PostGIS` · `Angular 21` · `Leaflet` · `Highcharts` · `Google Gemini (AI Agent)` · `Telegram Bot` · `Docker Compose` · `TypeScript`
+`n8n` · `PostgreSQL/PostGIS` · `Node + Fastify (auth-api)` · `Angular 21` · `Leaflet` · `Highcharts` · `Google Gemini (AI Agent)` · `Telegram Bot` · `Docker Compose` · `TypeScript`
 
 ## Operações
 
@@ -163,8 +165,9 @@ docker exec -i radar-db psql -U radar -d radar < db/init/05-indexes.sql
 
 ## Roadmap
 
-- [ ] Deploy em VPS (n8n + Postgres atrás de HTTPS) e dashboard na Vercel
-- [ ] Expandir para todo o estado de MG / Brasil
+- [x] Deploy em produção (n8n + auth-api atrás de HTTPS na Oracle Cloud, dashboard no Cloudflare Pages)
+- [x] Expandir a cobertura para todo o Brasil (27 UFs)
+- [x] Contas de usuário e alertas por e-mail
 - [ ] Incluir zika e outras arboviroses
 - [ ] Canal WhatsApp além do Telegram
 
