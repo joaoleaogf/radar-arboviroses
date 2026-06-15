@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Doenca, FilterParams, MunicipioProps, RadarService, Resumo, TopAlerta } from '../radar.service';
 import { Mapa } from '../mapa/mapa';
 import { Serie } from '../serie/serie';
+import { PerfilRisco } from '../perfil-risco/perfil-risco';
 import { NIVEL_HEX, NIVEL_LABEL } from '../nivel';
 import { REGIOES, UFS_POR_REGIAO, UF_NOME } from '../core/geo';
 import { dataDaSeFormatada, formatarSEBadge } from '../core/se';
@@ -15,7 +16,7 @@ export type TipoMapa = 'alerta' | 'incidencia';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [Mapa, Serie, DecimalPipe, RouterLink, KpiCard, NivelBadge, Skeleton, EmptyState, ErrorState],
+  imports: [Mapa, Serie, PerfilRisco, DecimalPipe, RouterLink, KpiCard, NivelBadge, Skeleton, EmptyState, ErrorState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',

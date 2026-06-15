@@ -13,6 +13,7 @@ import Highcharts from 'highcharts/highstock';
 import { Doenca, RadarService } from '../radar.service';
 import { NIVEL_HEX, NIVEL_LABEL, RT_LABEL, interpretarRt } from '../nivel';
 import { fmtPtBr, tsFromIso } from '../core/se';
+import { ThemeService } from '../core/theme';
 
 @Component({
   selector: 'app-serie',
@@ -55,6 +56,10 @@ import { fmtPtBr, tsFromIso } from '../core/se';
       width: 100%;
       height: 370px;
     }
+    @media (max-width: 600px) {
+      .grafico { height: 300px; }
+      .chart-hint { font-size: 0.64rem; }
+    }
     .vazio {
       display: flex;
       flex-direction: column;
@@ -86,6 +91,7 @@ import { fmtPtBr, tsFromIso } from '../core/se';
 })
 export class Serie implements AfterViewInit, OnDestroy {
   private readonly radar = inject(RadarService);
+  private readonly theme = inject(ThemeService);
   private readonly host = viewChild<ElementRef<HTMLElement>>('host');
 
   readonly geocode = input<number | null>(null);
@@ -101,6 +107,7 @@ export class Serie implements AfterViewInit, OnDestroy {
       const geocode = this.geocode();
       const doenca  = this.doenca();
       this.metrica(); // recarrega ao alternar a métrica
+      this.theme.theme(); // recolore o gráfico ao alternar o tema
       if (geocode) this.carregar(geocode, doenca);
     });
   }
@@ -121,6 +128,7 @@ export class Serie implements AfterViewInit, OnDestroy {
 
       const pts = res.serie;
       const porIncidencia = this.metrica() === 'incidencia';
+      const pal = this.theme.palette();
 
       // Série de barras principal, colorida por nível de alerta.
       // Em modo incidência mostra casos/100k hab (comparável entre municípios).
@@ -165,12 +173,12 @@ export class Serie implements AfterViewInit, OnDestroy {
           panKey:   'shift',
           resetZoomButton: {
             theme: {
-              fill:            '#111d33',
-              stroke:          '#1c2b46',
+              fill:            pal.btnFill,
+              stroke:          pal.btnStroke,
               'stroke-width':  1,
               r:               6,
-              style:           { color: '#7080a0', fontSize: '11px', fontWeight: '600' },
-              states: { hover: { fill: '#162039', style: { color: '#e4eaf6' } } },
+              style:           { color: pal.btnText, fontSize: '11px', fontWeight: '600' },
+              states: { hover: { fill: pal.btnHoverFill, style: { color: pal.btnHoverText } } },
             },
             position: { align: 'right', verticalAlign: 'top', x: -4, y: 4 },
           },
@@ -195,14 +203,14 @@ export class Serie implements AfterViewInit, OnDestroy {
           ],
           selected: 2, // "1 ano" como padrão — contexto epidemiológico relevante
           buttonTheme: {
-            fill:           '#111d33',
-            stroke:         '#1c2b46',
+            fill:           pal.btnFill,
+            stroke:         pal.btnStroke,
             'stroke-width': 1,
             r:              6,
-            style:          { color: '#7080a0', fontWeight: '600', fontSize: '11px' },
+            style:          { color: pal.btnText, fontWeight: '600', fontSize: '11px' },
             padding: 5,
             states: {
-              hover:  { fill: '#162039', style: { color: '#e4eaf6' } },
+              hover:  { fill: pal.btnHoverFill, style: { color: pal.btnHoverText } },
               select: {
                 fill:   '#38bdf8',
                 stroke: '#38bdf8',
@@ -219,14 +227,14 @@ export class Serie implements AfterViewInit, OnDestroy {
           height:  34,
           margin:  10,
           maskFill:     'rgba(56,189,248,0.07)',
-          outlineColor: '#1c2b46',
+          outlineColor: pal.navOutline,
           outlineWidth: 1,
           handles: {
-            backgroundColor: '#1c2b46',
+            backgroundColor: pal.navOutline,
             borderColor:     '#38bdf8',
           },
           xAxis: {
-            labels: { style: { color: '#3d5070', fontSize: '10px' } },
+            labels: { style: { color: pal.label, fontSize: '10px' } },
           },
           series: {
             type:      'column',
@@ -252,9 +260,9 @@ export class Serie implements AfterViewInit, OnDestroy {
             dashStyle: 'Dash' as Highcharts.DashStyleValue,
             width:     1,
           },
-          labels:       { style: { color: '#7080a0', fontSize: '11px' } },
-          lineColor:    '#1c2b46',
-          tickColor:    '#1c2b46',
+          labels:       { style: { color: pal.axisText, fontSize: '11px' } },
+          lineColor:    pal.axisLine,
+          tickColor:    pal.axisLine,
           gridLineColor:'transparent',
         },
 
@@ -263,8 +271,8 @@ export class Serie implements AfterViewInit, OnDestroy {
           {
             // Esquerda: casos
             title:     { text: null },
-            labels:    { style: { color: '#7080a0', fontSize: '11px' }, align: 'right', x: -4 },
-            gridLineColor:     '#131e34',
+            labels:    { style: { color: pal.axisText, fontSize: '11px' }, align: 'right', x: -4 },
+            gridLineColor:     pal.gridStrong,
             gridLineDashStyle: 'Dot' as Highcharts.DashStyleValue,
             opposite:  false,
           },
@@ -272,7 +280,7 @@ export class Serie implements AfterViewInit, OnDestroy {
             // Direita: Rt
             title:  { text: null },
             labels: {
-              style:     { color: '#7080a0', fontSize: '10px' },
+              style:     { color: pal.axisText, fontSize: '10px' },
               formatter: function(this: Highcharts.AxisLabelsFormatterContextObject) {
                 return (this.value as number).toFixed(1);
               },
@@ -305,8 +313,8 @@ export class Serie implements AfterViewInit, OnDestroy {
           verticalAlign: 'top',
           floating:      false,
           symbolRadius:  3,
-          itemStyle:     { color: '#7080a0', fontSize: '11px', fontWeight: '600' },
-          itemHoverStyle:{ color: '#e4eaf6' },
+          itemStyle:     { color: pal.axisText, fontSize: '11px', fontWeight: '600' },
+          itemHoverStyle:{ color: pal.btnHoverText },
           margin: 12,
         },
 
@@ -314,13 +322,13 @@ export class Serie implements AfterViewInit, OnDestroy {
         tooltip: {
           shared:          true,
           useHTML:         true,
-          backgroundColor: 'rgba(7,13,26,0.97)',
-          borderColor:     '#1c2b46',
+          backgroundColor: pal.tooltipBg,
+          borderColor:     pal.tooltipBorder,
           borderWidth:     1,
           borderRadius:    10,
           padding:         0,
           shadow: { color: 'rgba(0,0,0,0.5)', offsetX: 0, offsetY: 4, opacity: 0.4, width: 14 },
-          style: { color: '#e4eaf6', fontSize: '12px' },
+          style: { color: pal.tooltipText, fontSize: '12px' },
           formatter: function(this: Highcharts.TooltipFormatterContextObject): string {
             const points  = (this as any).points as Highcharts.TooltipFormatterContextObject[];
             if (!points?.length) return '';
@@ -343,23 +351,23 @@ export class Serie implements AfterViewInit, OnDestroy {
               return `
                 <div style="display:flex;align-items:center;gap:8px;padding:2px 0">
                   ${dot}
-                  <span style="flex:1;color:#9aa8c0">${p.series.name}</span>
-                  <strong style="color:#e4eaf6;font-variant-numeric:tabular-nums">${valFmt}</strong>
+                  <span style="flex:1;color:${pal.tooltipMuted}">${p.series.name}</span>
+                  <strong style="color:${pal.tooltipText};font-variant-numeric:tabular-nums">${valFmt}</strong>
                 </div>`;
             }).filter(Boolean).join('');
 
             const inc = (!porIncidencia && estPt?.p_inc100k != null)
-              ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;color:#7080a0;font-size:11px">
+              ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;color:${pal.tooltipMuted};font-size:11px">
                    <span>Incidência / 100k hab.</span>
-                   <span style="color:#9aa8c0;font-variant-numeric:tabular-nums">${(estPt.p_inc100k as number).toFixed(1)}</span>
+                   <span style="color:${pal.tooltipText};font-variant-numeric:tabular-nums">${(estPt.p_inc100k as number).toFixed(1)}</span>
                  </div>` : '';
 
             const rtVal = estPt?.rt as number | null | undefined;
             const tend  = interpretarRt(rtVal);
-            const rtCor = tend === 'crescimento' ? '#f97316' : tend === 'queda' ? '#10b981' : '#7080a0';
+            const rtCor = tend === 'crescimento' ? '#f97316' : tend === 'queda' ? '#10b981' : pal.tooltipMuted;
             const rtInterp = rtVal != null
               ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px">
-                   <span style="color:#7080a0">${RT_LABEL[tend]}</span>
+                   <span style="color:${pal.tooltipMuted}">${RT_LABEL[tend]}</span>
                    <span style="color:${rtCor};font-weight:600">Rt ${rtVal.toFixed(2)}</span>
                  </div>` : '';
 
@@ -367,11 +375,11 @@ export class Serie implements AfterViewInit, OnDestroy {
               <div style="min-width:220px;padding:12px 14px;font-family:Inter,sans-serif">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
                   <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:${hex}1a;color:${hex};letter-spacing:0.03em">${lvLabel}</span>
-                  <span style="font-size:11px;color:#7080a0">${seStr}${dateStr}</span>
+                  <span style="font-size:11px;color:${pal.tooltipMuted}">${seStr}${dateStr}</span>
                 </div>
-                <div style="border-top:1px solid #1c2b46;padding-top:8px">
+                <div style="border-top:1px solid ${pal.tooltipBorder};padding-top:8px">
                   ${linhas}
-                  ${(inc || rtInterp) ? `<div style="border-top:1px solid #131e34;margin-top:6px;padding-top:6px">${inc}${rtInterp}</div>` : ''}
+                  ${(inc || rtInterp) ? `<div style="border-top:1px solid ${pal.gridStrong};margin-top:6px;padding-top:6px">${inc}${rtInterp}</div>` : ''}
                 </div>
               </div>`;
           },

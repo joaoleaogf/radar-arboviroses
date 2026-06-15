@@ -71,3 +71,10 @@
 }
 
 .se-cell { color: var(--muted); font-size: 0.78rem; }
+
+@media (max-width: 720px) {
+  .page { padding: 20px 16px; }
+  /* tabela com muitas colunas → rolagem horizontal no mobile */
+  .alert-table { overflow-x: auto; }
+  .table-head, .table-row { min-width: 600px; }
+}

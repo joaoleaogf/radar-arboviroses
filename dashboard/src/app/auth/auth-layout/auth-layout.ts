@@ -8,10 +8,19 @@ import { RouterOutlet } from '@angular/router';
   template: `
     <div class="auth-wrap">
       <div class="auth-brand">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-          <path d="M8 12h8M12 8l4 4-4 4"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor" opacity=".25"/>
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="auth-radar-sweep" x1="16" y1="16" x2="27" y2="7" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="currentColor" stop-opacity="0.5"/>
+              <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <circle cx="16" cy="16" r="13"  stroke="currentColor" stroke-width="1.7" opacity="0.9"/>
+          <circle cx="16" cy="16" r="8.5" stroke="currentColor" stroke-width="1.3" opacity="0.4"/>
+          <circle cx="16" cy="16" r="4"   stroke="currentColor" stroke-width="1.3" opacity="0.28"/>
+          <path d="M16 16 L16 3 A13 13 0 0 1 25.19 6.81 Z" fill="url(#auth-radar-sweep)"/>
+          <line x1="16" y1="16" x2="16" y2="3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <circle cx="22.7" cy="9.3" r="2.3" fill="currentColor"/>
         </svg>
         <span>Radar de <strong>Arboviroses</strong></span>
       </div>

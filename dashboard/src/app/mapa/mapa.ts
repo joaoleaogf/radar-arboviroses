@@ -16,6 +16,13 @@ import * as L from 'leaflet';
 import { Doenca, FilterParams, MunicipiosGeoJson, MunicipioProps, RadarService } from '../radar.service';
 import { corDoNivel, NIVEL_HEX, NIVEL_LABEL } from '../nivel';
 import { TipoMapa } from '../dashboard/dashboard';
+import { ThemeService } from '../core/theme';
+
+/** Basemaps CartoDB por tema (mantêm o mapa coerente com o tema da aplicação). */
+const BASEMAP = {
+  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+};
 
 const INC_BREAKS: [number, string][] = [
   [  10, '#2563eb'],
@@ -83,7 +90,7 @@ function corDaIncidencia(inc: number | null | undefined): string {
     .mapa-loading {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(5, 12, 24, 0.55);
+      background: color-mix(in srgb, var(--bg) 55%, transparent);
       border-radius: var(--radius);
       z-index: 500;
       backdrop-filter: blur(3px);
@@ -102,7 +109,7 @@ function corDaIncidencia(inc: number | null | undefined): string {
       z-index: 500;
       display: flex; flex-wrap: wrap; gap: 7px;
       padding: 8px 12px;
-      background: rgba(5, 12, 24, 0.90);
+      background: color-mix(in srgb, var(--surface) 90%, transparent);
       backdrop-filter: blur(10px);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -126,6 +133,7 @@ function corDaIncidencia(inc: number | null | undefined): string {
 export class Mapa implements AfterViewInit, OnDestroy {
   private readonly radar = inject(RadarService);
   private readonly cdr   = inject(ChangeDetectorRef);
+  private readonly theme = inject(ThemeService);
   private readonly host  = viewChild.required<ElementRef<HTMLElement>>('host');
 
   readonly doenca    = input.required<Doenca>();
@@ -141,6 +149,7 @@ export class Mapa implements AfterViewInit, OnDestroy {
   protected readonly carregando = signal(false);
 
   private map?: L.Map;
+  private tiles?: L.TileLayer;
   private layer?: L.GeoJSON;
   private lastFc: MunicipiosGeoJson | null = null;
   private readonly canvasRenderer = L.canvas({ padding: 0.5, tolerance: 4 });
@@ -157,6 +166,19 @@ export class Mapa implements AfterViewInit, OnDestroy {
       void this.tipoMapa();
       if (this.map && this.lastFc) this.render(this.lastFc);
     });
+
+    // Troca o basemap ao alternar o tema da aplicação.
+    effect(() => {
+      const t = this.theme.theme();
+      if (this.map) this.aplicarBasemap(t);
+    });
+  }
+
+  private aplicarBasemap(tema: 'dark' | 'light'): void {
+    if (!this.map) return;
+    this.tiles?.remove();
+    this.tiles = L.tileLayer(BASEMAP[tema], { maxZoom: 19 }).addTo(this.map);
+    this.tiles.bringToBack();
   }
 
   ngAfterViewInit(): void {
@@ -166,9 +188,7 @@ export class Mapa implements AfterViewInit, OnDestroy {
       preferCanvas: true,
     }).setView([-15.8, -47.9], 4);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-    }).addTo(this.map);
+    this.aplicarBasemap(this.theme.theme());
 
     this.carregar(this.doenca(), this.uf(), this.regiao());
   }
