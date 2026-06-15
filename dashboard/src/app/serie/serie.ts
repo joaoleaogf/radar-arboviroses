@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   input,
+  output,
   viewChild,
 } from '@angular/core';
 import Highcharts from 'highcharts/highstock';
@@ -14,6 +15,10 @@ import { Doenca, RadarService } from '../radar.service';
 import { NIVEL_HEX, NIVEL_LABEL, RT_LABEL, interpretarRt } from '../nivel';
 import { fmtPtBr, tsFromIso } from '../core/se';
 import { ThemeService } from '../core/theme';
+import { Periodo } from '../dashboard/dashboard';
+
+/** Ordem dos botões do range selector → índice usado por rangeSelector.selected. */
+const PERIODO_INDEX: Record<Periodo, number> = { '3M': 0, '6M': 1, '1A': 2, 'tudo': 3 };
 
 @Component({
   selector: 'app-serie',
@@ -99,6 +104,10 @@ export class Serie implements AfterViewInit, OnDestroy {
   readonly doenca  = input.required<Doenca>();
   /** Métrica do eixo principal: contagem de casos ou incidência por 100k hab. */
   readonly metrica = input<'casos' | 'incidencia'>('casos');
+  /** Período selecionado no range selector (compartilhado com o perfil de risco). */
+  readonly periodo = input<Periodo>('1A');
+  /** Emite quando o usuário troca o período pelos botões do gráfico. */
+  readonly periodoChange = output<Periodo>();
 
   private chart?: Highcharts.Chart;
 
@@ -196,12 +205,12 @@ export class Serie implements AfterViewInit, OnDestroy {
           inputEnabled: false,
           buttonSpacing: 4,
           buttons: [
-            { type: 'month', count: 3,  text: '3M',   title: 'Últimos 3 meses' },
-            { type: 'month', count: 6,  text: '6M',   title: 'Últimos 6 meses' },
-            { type: 'year',  count: 1,  text: '1 ano', title: 'Último ano' },
-            { type: 'all',              text: 'Tudo',  title: 'Todo o histórico' },
+            { type: 'month', count: 3,  text: '3M',   title: 'Últimos 3 meses',  events: { click: () => { this.periodoChange.emit('3M'); } } },
+            { type: 'month', count: 6,  text: '6M',   title: 'Últimos 6 meses',  events: { click: () => { this.periodoChange.emit('6M'); } } },
+            { type: 'year',  count: 1,  text: '1 ano', title: 'Último ano',       events: { click: () => { this.periodoChange.emit('1A'); } } },
+            { type: 'all',              text: 'Tudo',  title: 'Todo o histórico', events: { click: () => { this.periodoChange.emit('tudo'); } } },
           ],
-          selected: 2, // "1 ano" como padrão — contexto epidemiológico relevante
+          selected: PERIODO_INDEX[this.periodo()],
           buttonTheme: {
             fill:           pal.btnFill,
             stroke:         pal.btnStroke,

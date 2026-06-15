@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { DecimalPipe } from '@angular/common';
 import { Doenca, PontoSerie, RadarService } from '../radar.service';
 import { NIVEL_COR, NIVEL_LABEL } from '../nivel';
+import { Periodo } from '../dashboard/dashboard';
 
 interface Fatia {
   nivel: number;
@@ -9,8 +10,9 @@ interface Fatia {
   pct: number;
 }
 
-/** Nº de semanas recentes consideradas no perfil de risco. */
-const JANELA = 52;
+/** Nº de semanas consideradas por período (espelha o range selector da série). */
+const PERIODO_SEMANAS: Record<Periodo, number> = { '3M': 13, '6M': 26, '1A': 52, 'tudo': Infinity };
+const PERIODO_LABEL:   Record<Periodo, string> = { '3M': '3 meses', '6M': '6 meses', '1A': '1 ano', 'tudo': 'Histórico' };
 
 /**
  * Perfil de risco do município selecionado: distribuição das últimas ~52
@@ -29,7 +31,7 @@ const JANELA = 52;
         </svg>
         Perfil de risco
       </h3>
-      <span class="bloco-sub">{{ totalComDados() }} sem. com dados</span>
+      <span class="bloco-sub">{{ periodoLabel() }} · {{ totalComDados() }} sem.</span>
     </div>
 
     @if (totalComDados() > 0) {
@@ -61,8 +63,8 @@ const JANELA = 52;
             <small class="st-hint">laranja + vermelho</small>
           </div>
           <div class="stat">
-            <span class="st-rotulo">Pico de casos est.</span>
-            <strong class="st-valor">{{ picoCasos() | number:'1.0-0' }}</strong>
+            <span class="st-rotulo">{{ porIncidencia() ? 'Pico de inc./100k' : 'Pico de casos est.' }}</span>
+            <strong class="st-valor">{{ pico() | number: (porIncidencia() ? '1.1-1' : '1.0-0') }}</strong>
             <small class="st-hint">em uma semana</small>
           </div>
           <div class="stat">
@@ -132,6 +134,13 @@ export class PerfilRisco {
 
   readonly geocode = input<number | null>(null);
   readonly doenca  = input.required<Doenca>();
+  /** Métrica do pico, sincronizada com o toggle da série histórica. */
+  readonly metrica = input<'casos' | 'incidencia'>('casos');
+  /** Período, sincronizado com o range selector da série histórica. */
+  readonly periodo = input<Periodo>('1A');
+
+  protected readonly porIncidencia = computed(() => this.metrica() === 'incidencia');
+  protected readonly periodoLabel  = computed(() => PERIODO_LABEL[this.periodo()]);
 
   private readonly serie = signal<PontoSerie[]>([]);
 
@@ -147,10 +156,12 @@ export class PerfilRisco {
     });
   }
 
-  /** Últimas JANELA semanas com nível de alerta válido (1–4). */
-  private readonly recente = computed(() =>
-    this.serie().slice(-JANELA).filter(p => (p.nivel ?? 0) >= 1),
-  );
+  /** Semanas do período selecionado com nível de alerta válido (1–4). */
+  private readonly recente = computed(() => {
+    const n = PERIODO_SEMANAS[this.periodo()];
+    const janela = n === Infinity ? this.serie() : this.serie().slice(-n);
+    return janela.filter(p => (p.nivel ?? 0) >= 1);
+  });
 
   protected readonly totalComDados = computed(() => this.recente().length);
 
@@ -166,9 +177,13 @@ export class PerfilRisco {
     this.recente().filter(p => (p.nivel ?? 0) >= 3).length,
   );
 
-  protected readonly picoCasos = computed(() =>
-    this.recente().reduce((max, p) => Math.max(max, p.casos_est ?? 0), 0),
-  );
+  protected readonly pico = computed(() => {
+    const inc = this.porIncidencia();
+    return this.recente().reduce(
+      (max, p) => Math.max(max, (inc ? p.p_inc100k : p.casos_est) ?? 0),
+      0,
+    );
+  });
 
   protected readonly nivelAtual = computed(() => {
     const ult = this.serie().at(-1);

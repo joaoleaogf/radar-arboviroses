@@ -5,7 +5,11 @@
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 36px 36px 32px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 460px) {
+  .card-auth { padding: 28px 22px 26px; border-radius: 16px; }
 }
 
 .brand-mark {

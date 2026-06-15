@@ -13,6 +13,7 @@ import { NivelBadge } from '../ui/nivel-badge';
 import { Skeleton, EmptyState, ErrorState } from '../ui/states';
 
 export type TipoMapa = 'alerta' | 'incidencia';
+export type Periodo = '3M' | '6M' | '1A' | 'tudo';
 
 @Component({
   selector: 'app-dashboard',
@@ -35,6 +36,8 @@ export class Dashboard {
   protected readonly ufSel     = signal<string | null>(null);
   protected readonly tipoMapa  = signal<TipoMapa>('alerta');
   protected readonly metricaSerie = signal<'casos' | 'incidencia'>('casos');
+  /** Período da série, sincronizado entre o gráfico e o perfil de risco. */
+  protected readonly periodoSerie = signal<Periodo>('1A');
 
   protected readonly regioes   = REGIOES;
   protected readonly hex       = NIVEL_HEX;
@@ -135,6 +138,10 @@ export class Dashboard {
 
   protected onSelecionar(m: MunicipioProps): void {
     this.selecionado.set(m);
+  }
+
+  protected limparSelecao(): void {
+    this.selecionado.set(null);
   }
 
   protected onSelecionarAlerta(t: TopAlerta): void {

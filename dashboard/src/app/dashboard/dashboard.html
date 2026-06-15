@@ -175,6 +175,12 @@
         Série histórica
         @if (selecionado(); as m) {
           <span class="muni">· {{ m.nome }}</span>
+          <button class="limpar-sel" (click)="limparSelecao()"
+                  title="Remover seleção" aria-label="Remover seleção do município">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         }
       </h2>
       @if (selecionado()) {
@@ -189,10 +195,12 @@
       [nome]="selecionado()?.nome ?? ''"
       [doenca]="doenca()"
       [metrica]="metricaSerie()"
+      [periodo]="periodoSerie()"
+      (periodoChange)="periodoSerie.set($event)"
     />
 
     @if (selecionado(); as m) {
-      <app-perfil-risco [geocode]="m.geocode" [doenca]="doenca()" />
+      <app-perfil-risco [geocode]="m.geocode" [doenca]="doenca()" [metrica]="metricaSerie()" [periodo]="periodoSerie()" />
     } @else if (resumo()?.top_alertas?.length) {
       <div class="ranking-header">
         <h3>
