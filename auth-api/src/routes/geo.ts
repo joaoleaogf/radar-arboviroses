@@ -1,8 +1,36 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { pool } from '../db.js';
 
 interface GeoQuery   { doenca: string; uf: string; regiao: string }
 interface SerieQuery { doenca: string; geocode: string }
+
+// Cache em memória: os dados só mudam após o ETL semanal (terça), então
+// servir do cache tira o Postgres compartilhado do caminho crítico —
+// ele também guarda o histórico do n8n, então cada query poupada alivia a VM.
+const CACHE_TTL_MS  = Number(process.env.GEO_CACHE_TTL_MS ?? 15 * 60_000); // 15 min
+const CACHE_MAX     = Number(process.env.GEO_CACHE_MAX ?? 40);             // teto de entradas (protege a RAM de 1GB)
+const cache = new Map<string, { at: number; body: string }>();
+
+function fromCache(key: string): string | undefined {
+  const e = cache.get(key);
+  if (e && Date.now() - e.at < CACHE_TTL_MS) return e.body;
+  if (e) cache.delete(key); // expirada
+  return undefined;
+}
+
+function toCache(key: string, body: string): void {
+  cache.set(key, { at: Date.now(), body });
+  // eviction FIFO: Map preserva ordem de inserção
+  while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value as string);
+}
+
+function sendCached(reply: FastifyReply, body: string, hit: boolean): FastifyReply {
+  reply.header('Content-Type', 'application/json; charset=utf-8');
+  // max-age (browser) curto, s-maxage (CDN/Cloudflare) longo, SWR serve stale enquanto revalida
+  reply.header('Cache-Control', 'public, max-age=300, s-maxage=900, stale-while-revalidate=86400');
+  reply.header('X-Cache', hit ? 'HIT' : 'MISS');
+  return reply.send(body);
+}
 
 // regiao não usa enum: os valores vêm do IBGE via WF1
 const geoQuerySchema = {
@@ -30,6 +58,10 @@ export async function geoRoutes(app: FastifyInstance) {
   app.get<{ Querystring: GeoQuery }>('/municipios', { schema: { querystring: geoQuerySchema } }, async (req, reply) => {
     const { doenca, uf, regiao } = req.query;
 
+    const key = `municipios:${doenca}:${uf}:${regiao}`;
+    const cachedBody = fromCache(key);
+    if (cachedBody !== undefined) return sendCached(reply, cachedBody, true);
+
     const { rows } = await pool.query<{ fc: string }>(
       `SELECT jsonb_build_object(
          'type', 'FeatureCollection',
@@ -50,13 +82,18 @@ export async function geoRoutes(app: FastifyInstance) {
       [doenca, uf, regiao],
     );
 
-    reply.header('Content-Type', 'application/json; charset=utf-8');
-    return reply.send(rows[0]?.fc ?? '{"type":"FeatureCollection","features":[]}');
+    const body = rows[0]?.fc ?? '{"type":"FeatureCollection","features":[]}';
+    toCache(key, body);
+    return sendCached(reply, body, false);
   });
 
   // Resumo nacional / filtrado
   app.get<{ Querystring: GeoQuery }>('/resumo', { schema: { querystring: geoQuerySchema } }, async (req, reply) => {
     const { doenca, uf, regiao } = req.query;
+
+    const key = `resumo:${doenca}:${uf}:${regiao}`;
+    const cachedBody = fromCache(key);
+    if (cachedBody !== undefined) return sendCached(reply, cachedBody, true);
 
     const { rows } = await pool.query<{ payload: string }>(
       `WITH filtro AS (
@@ -95,13 +132,18 @@ export async function geoRoutes(app: FastifyInstance) {
       [doenca, uf, regiao],
     );
 
-    reply.header('Content-Type', 'application/json; charset=utf-8');
-    return reply.send(rows[0]?.payload ?? 'null');
+    const body = rows[0]?.payload ?? 'null';
+    toCache(key, body);
+    return sendCached(reply, body, false);
   });
 
   // Série histórica de um município
   app.get<{ Querystring: SerieQuery }>('/serie', { schema: { querystring: serieQuerySchema } }, async (req, reply) => {
     const { doenca, geocode } = req.query;
+
+    const key = `serie:${doenca}:${geocode}`;
+    const cachedBody = fromCache(key);
+    if (cachedBody !== undefined) return sendCached(reply, cachedBody, true);
 
     const { rows } = await pool.query<{ payload: string }>(
       `SELECT jsonb_build_object(
@@ -119,7 +161,8 @@ export async function geoRoutes(app: FastifyInstance) {
       [geocode, doenca],
     );
 
-    reply.header('Content-Type', 'application/json; charset=utf-8');
-    return reply.send(rows[0]?.payload ?? 'null');
+    const body = rows[0]?.payload ?? 'null';
+    toCache(key, body);
+    return sendCached(reply, body, false);
   });
 }

@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import addFormatsModule from 'ajv-formats';
 import helmet from '@fastify/helmet';
+import compress from '@fastify/compress';
 import rateLimit from '@fastify/rate-limit';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
@@ -21,6 +22,10 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   });
 
   await app.register(helmet, { contentSecurityPolicy: false }); // API JSON pura — CSP não se aplica
+
+  // gzip nas respostas: o GeoJSON de municípios (~2MB) cai para ~250KB.
+  // threshold evita gastar CPU comprimindo payloads pequenos; só gzip (mais barato que brotli na VM de 1GB).
+  await app.register(compress, { global: true, threshold: 1024, encodings: ['gzip', 'deflate'] });
 
   await app.register(cors, {
     origin: (process.env.CORS_ORIGIN ?? 'http://localhost:4200').split(',').map(s => s.trim()),

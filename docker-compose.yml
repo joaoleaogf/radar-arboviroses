@@ -40,6 +40,15 @@ services:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me}
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_RUNNERS_ENABLED: "true"
+      # Enxuga o histórico de execução — ele vive no MESMO Postgres da API (schema n8n).
+      # Não guardar execuções de sucesso corta drasticamente escrita/IO durante o ETL (milhares de itens/terça).
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: "none"
+      EXECUTIONS_DATA_SAVE_ON_ERROR: "all"
+      EXECUTIONS_DATA_SAVE_ON_PROGRESS: "false"
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: "false"
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "168"          # descarta execuções com mais de 7 dias
+      EXECUTIONS_DATA_PRUNE_MAX_COUNT: "5000"
       # Webhooks da API do dashboard (CORS liberado para dev local)
       N8N_CORS_ALLOW_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
       # Usado pelo WF3 (alertas) via $env
