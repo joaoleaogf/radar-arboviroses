@@ -82,6 +82,19 @@ import { fmtPtBr, tsFromIso } from '../core/se';
       font-size: 0.875rem;
       line-height: 1.6;
     }
+
+    @media (max-width: 700px) {
+      .chart-wrap { padding: 8px 0 0; }
+      .grafico { height: 300px; }
+      .vazio { height: 220px; gap: 10px; padding: 0 16px; }
+      .vazio-icon { width: 46px; height: 46px; border-radius: 13px; }
+      .vazio p { font-size: 0.82rem; }
+    }
+
+    /* Dica de zoom por arraste/scroll só faz sentido com mouse */
+    @media (hover: none), (max-width: 700px) {
+      .chart-hint { display: none; }
+    }
   `],
 })
 export class Serie implements AfterViewInit, OnDestroy {
@@ -237,6 +250,28 @@ export class Serie implements AfterViewInit, OnDestroy {
         },
 
         scrollbar: { enabled: false },
+
+        // ── Telas estreitas: menos cromo, mais gráfico ───────
+        responsive: {
+          rules: [{
+            condition: { maxWidth: 480 },
+            chartOptions: {
+              // Navegador temporal come ~45px de altura e é difícil de
+              // manipular no toque — o rangeSelector já cobre o caso de uso.
+              navigator: { enabled: false },
+              legend: {
+                itemStyle: { fontSize: '10px' },
+                itemDistance: 12,
+                margin: 8,
+              },
+              xAxis: { labels: { style: { fontSize: '10px' } } },
+              yAxis: [
+                { labels: { style: { fontSize: '10px' } } },
+                { labels: { style: { fontSize: '9px' } } },
+              ],
+            },
+          }],
+        },
 
         // ── Eixo X — datas naturais ──────────────────────────
         xAxis: {

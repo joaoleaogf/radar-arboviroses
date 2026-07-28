@@ -149,3 +149,48 @@ tr:hover td { background: var(--surface-2); }
   gap: 10px; padding: 56px; color: var(--muted); text-align: center;
 }
 .empty p { font-size: 0.875rem; margin: 0; }
+
+/* Dica de rolagem horizontal — só aparece no mobile */
+.scroll-hint { display: none; }
+
+/* ── Mobile ───────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .page { padding: 18px 14px 32px; }
+
+  .scroll-hint {
+    display: block;
+    margin: 0 0 6px;
+    font-size: 0.7rem;
+    color: var(--muted-2);
+  }
+
+  .page-header { gap: 12px; margin-bottom: 16px; }
+  .page-header h1 { font-size: 1.25rem; }
+  .page-header p  { font-size: 0.8rem; }
+
+  .header-actions { width: 100%; gap: 8px; }
+  .toggle { flex: 1; }
+  .toggle button { flex: 1; justify-content: center; padding: 9px 8px; }
+  .btn-export { flex-shrink: 0; padding: 9px 12px; }
+
+  /* Busca ocupa a linha; selects dividem a seguinte */
+  .filtros-row { gap: 8px; }
+  .search-wrap { flex: 1 1 100%; max-width: none; }
+  .filtros-row select { flex: 1 1 140px; min-width: 0; }
+  .btn-clear { flex: 1 1 100%; justify-content: center; }
+
+  .stats-bar { gap: 4px 0; padding: 10px 12px; }
+  .stat-pill { flex: 1 0 50%; font-size: 0.76rem; }
+  .stat-pill + .stat-pill { border-left: none; }
+
+  /* A tabela rola na horizontal em vez de espremer as colunas.
+     Altura limitada mantém o cabeçalho fixo funcionando. */
+  .table-wrap {
+    max-height: 65dvh;
+    min-height: 280px;
+    -webkit-overflow-scrolling: touch;
+  }
+  table { min-width: 640px; }
+  th { padding: 10px 12px; }
+  td { padding: 9px 12px; }
+}

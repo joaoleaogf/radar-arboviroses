@@ -32,7 +32,16 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       box-shadow: var(--shadow); opacity: 0; visibility: hidden;
       transition: opacity var(--t-fast), visibility var(--t-fast); z-index: 50;
     }
-    .info:hover .bubble, .info:focus-visible .bubble { opacity: 1; visibility: visible; }
+    /* :focus (e não só :focus-visible) para o toque abrir a bolha */
+    .info:hover .bubble, .info:focus .bubble { opacity: 1; visibility: visible; }
+
+    @media (max-width: 900px) {
+      /* Ancorada à direita: centralizada, estouraria a viewport */
+      .bubble {
+        max-width: min(68vw, 240px);
+        left: auto; right: -6px; transform: none;
+      }
+    }
   `],
 })
 export class InfoTooltip {

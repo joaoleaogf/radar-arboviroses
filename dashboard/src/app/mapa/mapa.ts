@@ -121,6 +121,23 @@ function corDaIncidencia(inc: number | null | undefined): string {
       width: 10px; height: 10px; border-radius: 3px;
       display: inline-block; flex-shrink: 0;
     }
+
+    @media (max-width: 700px) {
+      .mapa { min-height: 340px; border-radius: 0; }
+      .legenda {
+        bottom: 8px; left: 8px; right: 8px;
+        gap: 5px 10px;
+        padding: 7px 10px;
+        font-size: 10px;
+        justify-content: center;
+      }
+      .legenda .item { gap: 4px; }
+      .legenda i { width: 8px; height: 8px; }
+      /* Controles de zoom maiores para o toque */
+      :host ::ng-deep .leaflet-touch .leaflet-control-zoom a {
+        width: 34px; height: 34px; line-height: 34px;
+      }
+    }
   `],
 })
 export class Mapa implements AfterViewInit, OnDestroy {

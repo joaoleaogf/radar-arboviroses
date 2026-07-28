@@ -63,7 +63,13 @@ html, body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 15px;
+  /* Nada deve vazar na horizontal no mobile */
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
+
+/* Leaflet já isenta suas próprias imagens/canvas desta regra. */
+img { max-width: 100%; }
 
 h1, h2, h3 { margin: 0; line-height: 1.2; }
 button { font-family: inherit; cursor: pointer; }
@@ -163,3 +169,27 @@ input[type="search"] {
 }
 input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
 input::placeholder { color: var(--muted-2); }
+
+/* ── Mobile ──────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  /* iOS dá zoom em campos com fonte < 16px */
+  select,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"] {
+    font-size: 16px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+
+  /* Tooltip do mapa precisa caber na tela */
+  .leaflet-tooltip {
+    max-width: min(76vw, 260px);
+    white-space: normal;
+    font-size: 0.78rem;
+  }
+
+  .leaflet-popup-content { margin: 10px 12px; }
+}

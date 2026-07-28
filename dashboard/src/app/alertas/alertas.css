@@ -71,3 +71,52 @@
 }
 
 .se-cell { color: var(--muted); font-size: 0.78rem; }
+
+/* No desktop as métricas participam do grid da linha */
+.metricas { display: contents; }
+
+/* ── Mobile: cada linha vira um cartão ───────────────── */
+@media (max-width: 760px) {
+  .page { padding: 18px 14px 40px; }
+
+  .page-header { gap: 12px; margin-bottom: 18px; }
+  .page-header h1 { font-size: 1.25rem; }
+  .page-header p  { font-size: 0.8rem; }
+  .toggle { width: 100%; }
+  .toggle button { flex: 1; padding: 9px 10px; font-size: 0.82rem; }
+
+  .table-head { display: none; }
+
+  .table-row {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .nivel-cell { justify-self: end; }
+
+  .metricas {
+    display: flex;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .metricas .num { text-align: left; font-weight: 700; }
+
+  /* Rótulo da coluna vira legenda acima do número */
+  .metricas [data-lbl]::before {
+    content: attr(data-lbl);
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--muted-2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1px;
+  }
+
+  .se-cell { margin-left: auto; align-self: flex-end; font-size: 0.72rem; }
+}

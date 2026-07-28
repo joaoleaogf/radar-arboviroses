@@ -98,7 +98,7 @@ import { NIVEL_DESCRICAO, NIVEL_HEX, NIVEL_LABEL } from '../nivel';
     </article>
   `,
   styles: [`
-    .doc { max-width: 780px; margin: 0 auto; padding: 8px 4px 48px; color: var(--text); }
+    .doc { max-width: 780px; margin: 0 auto; padding: 24px 20px 48px; color: var(--text); }
     header { margin-bottom: 28px; }
     h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 10px; }
     .lead { color: var(--muted); font-size: 0.95rem; line-height: 1.65; max-width: 640px; }
@@ -118,6 +118,16 @@ import { NIVEL_DESCRICAO, NIVEL_HEX, NIVEL_LABEL } from '../nivel';
     .limites, ul.niveis { padding: 0; }
     .limites { margin: 0; padding-left: 20px; color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
     p { color: var(--muted); font-size: 0.9rem; line-height: 1.65; margin: 0; }
+
+    @media (max-width: 700px) {
+      .doc { padding: 18px 14px 40px; }
+      h1 { font-size: 1.3rem; }
+      .lead { font-size: 0.88rem; }
+      section { margin-bottom: 24px; }
+      /* Chip acima da descrição — lado a lado sobra pouco texto */
+      .niveis li { flex-direction: column; align-items: flex-start; gap: 5px; }
+      .chip { min-width: 0; }
+    }
   `],
 })
 export class Metodologia {

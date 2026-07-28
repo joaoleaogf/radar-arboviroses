@@ -537,3 +537,119 @@
 .rodape a:hover {
   color: var(--brand);
 }
+
+/* ── Tablet / drawer (sem sidebar fixa) ──────────────────── */
+
+@media (max-width: 900px) {
+  /* 3 + 1 fica desequilibrado; 2 x 2 lê melhor */
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Mobile ──────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  :host { padding: 16px 14px 40px; }
+
+  /* Cabeçalho empilhado */
+  .topo {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+
+  .brand { gap: 11px; }
+  .brand-icon { width: 40px; height: 40px; }
+  .brand-icon svg { width: 22px; height: 22px; }
+  .brand-text h1 { font-size: 1.15rem; }
+  .brand-text p { font-size: 0.74rem; line-height: 1.45; }
+
+  .header-right {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Toggle Dengue/Chikungunya ocupa a linha toda */
+  .header-right .toggle { flex: 1 1 100%; }
+  .header-right .toggle button {
+    flex: 1;
+    padding: 9px 8px;
+    font-size: 0.82rem;
+  }
+
+  /* Filtros: chips viram faixa rolável horizontal */
+  .filtros {
+    flex-direction: column;
+    /* nowrap é essencial: em coluna multi-linha o stretch usa a largura
+       da linha (max-content) e os filhos estouram o container. */
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 14px;
+  }
+
+  .filtro-esq {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    /* respiro para o anel de foco não ser cortado */
+    padding: 3px;
+    margin: -3px;
+  }
+  .filtro-esq::-webkit-scrollbar { display: none; }
+
+  .chip {
+    padding: 8px 13px;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  .filtro-dir {
+    gap: 10px;
+    min-width: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .filtro-dir .toggle-mapa { flex: 1; }
+  .filtro-dir .toggle-mapa button {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* KPIs em 2 colunas — evita uma coluna gigante antes do mapa */
+  .cards {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  /* Painéis */
+  .painel-header {
+    padding: 13px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .painel-header h2 { font-size: 0.9rem; }
+
+  .mapa-painel { min-height: 0; }
+  .direita app-serie { padding: 0 10px; }
+  .ranking-header { padding: 12px 14px 6px; }
+  .ranking { padding: 0 8px 12px; }
+  .ranking-item { padding: 10px 8px; gap: 8px; }
+
+  .grid { gap: 12px; }
+
+  .rodape {
+    margin-top: 20px;
+    font-size: 0.72rem;
+    line-height: 1.7;
+  }
+}
+
+@media (max-width: 380px) {
+  /* Telas muito estreitas: 2 colunas apertariam demais os números */
+  .cards { grid-template-columns: 1fr; }
+}

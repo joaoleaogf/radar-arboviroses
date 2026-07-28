@@ -37,15 +37,18 @@
             <strong>{{ a.nome }}</strong>
             <small>{{ a.uf }} · {{ a.regiao }}</small>
           </span>
-          <span>
+          <span class="nivel-cell">
             <span class="nivel-badge" [style.color]="hex[a.nivel]" [style.background]="hex[a.nivel]+'1a'">
               {{ label[a.nivel] }}
             </span>
           </span>
-          <span class="num">{{ a.casos_est | number:'1.0-0' }}</span>
-          <span class="num">{{ a.p_inc100k | number:'1.1-1' }}</span>
-          <span class="num" [class.rt-alto]="a.rt > 1">{{ a.rt | number:'1.2-2' }}</span>
-          <span class="se-cell">SE {{ (a.se+'').slice(4) }}/{{ (a.se+'').slice(0,4) }}</span>
+          <!-- display:contents no desktop; vira uma linha de métricas no mobile -->
+          <span class="metricas">
+            <span class="num" data-lbl="Casos est.">{{ a.casos_est | number:'1.0-0' }}</span>
+            <span class="num" data-lbl="Inc./100k">{{ a.p_inc100k | number:'1.1-1' }}</span>
+            <span class="num" [class.rt-alto]="a.rt > 1" data-lbl="Rt">{{ a.rt | number:'1.2-2' }}</span>
+            <span class="se-cell">SE {{ (a.se+'').slice(4) }}/{{ (a.se+'').slice(0,4) }}</span>
+          </span>
         </div>
       }
     </div>

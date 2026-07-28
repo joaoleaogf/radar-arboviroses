@@ -66,6 +66,17 @@ import { InfoTooltip } from './info-tooltip';
     .delta.subiu-ruim { color: var(--n4); }
     .delta.subiu-bom  { color: var(--n1); }
     .delta.neutro     { color: var(--muted); }
+
+    @media (max-width: 700px) {
+      .kpi { padding: 12px 13px; gap: 8px; min-height: 92px; border-radius: 12px; }
+      header { gap: 5px; align-items: flex-start; }
+      .rotulo { font-size: 0.7rem; line-height: 1.3; }
+      .valor { font-size: 1.35rem; }
+      .spark { width: 52px; height: 20px; }
+      .delta { font-size: 0.68rem; }
+      /* "vs. semana anterior" não cabe ao lado do valor em 2 colunas */
+      .delta-ctx { display: none; }
+    }
   `],
 })
 export class KpiCard {

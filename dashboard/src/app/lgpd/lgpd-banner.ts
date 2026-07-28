@@ -13,9 +13,11 @@ const KEY = 'lgpd_consent_v1';
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <span>
               Usamos <strong>cookies essenciais</strong> apenas para autenticação segura.
-              Seus dados são tratados conforme a
-              <strong>LGPD (Lei 13.709/2018)</strong> — coletados exclusivamente
-              para alertas de saúde pública e nunca compartilhados com terceiros.
+              <span class="lgpd-extra">
+                Seus dados são tratados conforme a
+                <strong>LGPD (Lei 13.709/2018)</strong> — coletados exclusivamente
+                para alertas de saúde pública e nunca compartilhados com terceiros.
+              </span>
               <button class="btn-policy" (click)="togglePolicy()">Saiba mais</button>
             </span>
           </div>
@@ -83,6 +85,21 @@ const KEY = 'lgpd_consent_v1';
       border-top: 1px solid var(--border-subtle);
     }
     .policy-detail strong { color: var(--muted); }
+
+    @media (max-width: 700px) {
+      .lgpd-banner { font-size: 0.78rem; }
+      .lgpd-inner {
+        gap: 12px;
+        padding: 12px 14px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
+      /* Texto longo demais para o rodapé do celular — fica no "Saiba mais" */
+      .lgpd-extra { display: none; }
+      .lgpd-text { min-width: 0; }
+      .lgpd-actions { width: 100%; }
+      .lgpd-actions button { flex: 1; padding: 10px 12px; }
+      .policy-detail { padding: 10px 14px 14px; }
+    }
   `],
 })
 export class LgpdBanner {
